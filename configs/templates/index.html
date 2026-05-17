@@ -641,7 +641,8 @@
                 transitioningFromLive = true;
             }
 
-            let currentDate = new Date(dateInput.value);
+            const dateParts = dateInput.value.split('-');
+            let currentDate = new Date(parseInt(dateParts[0], 10), parseInt(dateParts[1], 10) - 1, parseInt(dateParts[2], 10));
             let currentHour = parseInt(hourInput.value, 10);
 
             // 若剛從即時模式退下，第一下只進入「當前小時」的歷史紀錄，不扣除時間
@@ -681,24 +682,38 @@
 
         // 手機版滑動切換時段
         let touchstartX = 0;
+        let touchstartY = 0;
         let touchendX = 0;
+        let touchendY = 0;
 
-        function handleGesture() {
-            if (touchendX < touchstartX - 50) {
-                shiftHour(1); // 左滑，同 D，下一小時
-            }
-            if (touchendX > touchstartX + 50) {
-                shiftHour(-1); // 右滑，同 A，上一小時
+        function handleGesture(target) {
+            // 防止在輸入框、選單、按鈕或設定視窗內滑動時觸發時段切換
+            if (target.tagName === 'INPUT' || target.tagName === 'SELECT' || target.tagName === 'BUTTON') return;
+            const modal = document.getElementById('settings-modal');
+            if (modal && modal.contains(target)) return;
+
+            const dx = touchendX - touchstartX;
+            const dy = touchendY - touchstartY;
+
+            // 確保水平滑動的距離明顯大於垂直滑動的距離 (避免跟上下滑動捲動頁面衝突)
+            if (Math.abs(dx) > Math.abs(dy) * 1.5) {
+                if (dx < -50) {
+                    shiftHour(1); // 左滑，同 D，下一小時
+                } else if (dx > 50) {
+                    shiftHour(-1); // 右滑，同 A，上一小時
+                }
             }
         }
 
         document.addEventListener('touchstart', e => {
             touchstartX = e.changedTouches[0].screenX;
+            touchstartY = e.changedTouches[0].screenY;
         }, { passive: true });
 
         document.addEventListener('touchend', e => {
             touchendX = e.changedTouches[0].screenX;
-            handleGesture();
+            touchendY = e.changedTouches[0].screenY;
+            handleGesture(e.target);
         }, { passive: true });
 
         initCharts();
@@ -715,6 +730,7 @@
                     document.getElementById('settings-ymax').value = data.ymax;
                     document.getElementById('settings-day-range').value = data.day_range;
                     document.getElementById('settings-month-range').value = data.month_range;
+                    document.getElementById('settings-timezone').value = data.timezone || '';
                     
                     const container = document.getElementById('settings-targets-list');
                     container.innerHTML = '';
@@ -750,11 +766,12 @@
         }
 
         function saveSettings() {
-            const port = parseInt(document.getElementById('settings-port').value, 10);
-            const interval = parseInt(document.getElementById('settings-interval').value, 10);
-            const ymax = parseInt(document.getElementById('settings-ymax').value, 10);
-            const day_range = parseInt(document.getElementById('settings-day-range').value, 10);
-            const month_range = parseInt(document.getElementById('settings-month-range').value, 10);
+            const port = parseInt(document.getElementById('settings-port').value, 10) || 80;
+            const interval = parseInt(document.getElementById('settings-interval').value, 10) || 1;
+            const ymax = parseInt(document.getElementById('settings-ymax').value, 10) || 50;
+            const day_range = parseInt(document.getElementById('settings-day-range').value, 10) || 7;
+            const month_range = parseInt(document.getElementById('settings-month-range').value, 10) || 3;
+            const timezone = document.getElementById('settings-timezone').value.trim();
             
             const targetRows = document.querySelectorAll('.settings-target-row');
             const targets = [];
@@ -781,6 +798,7 @@
                 ymax: ymax,
                 day_range: day_range,
                 month_range: month_range,
+                timezone: timezone,
                 targets: targets
             };
             
@@ -839,6 +857,12 @@
                     <div style="flex: 1; display: flex; flex-direction: column; gap: 0.25rem;">
                         <label style="font-size: 0.85rem; color: #94a3b8;">月平均月份 (month_range)</label>
                         <input type="number" id="settings-month-range" style="background: #0f172a; border: 1px solid #334155; color: #f8fafc; padding: 0.5rem; border-radius: 6px; font-family: monospace;" placeholder="3">
+                    </div>
+                </div>
+                <div style="display: flex; gap: 0.75rem;">
+                    <div style="flex: 1; display: flex; flex-direction: column; gap: 0.25rem;">
+                        <label style="font-size: 0.85rem; color: #94a3b8;">時區 (timezone, 留空則使用系統預設)</label>
+                        <input type="text" id="settings-timezone" style="background: #0f172a; border: 1px solid #334155; color: #f8fafc; padding: 0.5rem; border-radius: 6px; font-family: monospace;" placeholder="Asia/Taipei">
                     </div>
                 </div>
                 

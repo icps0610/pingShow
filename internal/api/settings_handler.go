@@ -4,6 +4,7 @@ import (
 	"net/http"
 	"pingShow/internal/models"
 	"pingShow/internal/service"
+	"time"
 
 	"github.com/gin-gonic/gin"
 )
@@ -19,6 +20,7 @@ type SettingsInput struct {
 	YMax       int           `json:"ymax"`
 	DayRange   int           `json:"day_range"`
 	MonthRange int           `json:"month_range"`
+	Timezone   string        `json:"timezone"`
 	Targets    []TargetInput `json:"targets"`
 }
 
@@ -37,6 +39,7 @@ func HandleGetSettings(c *gin.Context) {
 		YMax:       models.SystemYMax,
 		DayRange:   models.SystemDayRange,
 		MonthRange: models.SystemMonthRange,
+		Timezone:   models.SystemTimezone,
 		Targets:    targets,
 	})
 }
@@ -77,6 +80,19 @@ func HandleSaveSettings(c *gin.Context) {
 	models.SystemYMax = input.YMax
 	models.SystemDayRange = input.DayRange
 	models.SystemMonthRange = input.MonthRange
+	if input.Timezone != "" {
+		if loc, err := time.LoadLocation(input.Timezone); err == nil {
+			models.SystemLocation = loc
+			models.SystemTimezone = input.Timezone
+		} else {
+			models.DataMutex.Unlock()
+			c.JSON(http.StatusBadRequest, gin.H{"error": "時區格式錯誤，請使用 IANA 格式，例如: Asia/Taipei"})
+			return
+		}
+	} else {
+		models.SystemLocation = time.Local
+		models.SystemTimezone = ""
+	}
 
 	// 動態調整 Targets 列表
 	oldTargetsMap := make(map[string]*models.TargetInfo)

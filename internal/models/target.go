@@ -6,6 +6,7 @@ import (
 	"os"
 	"path/filepath"
 	"sync"
+	"time"
 )
 
 type TargetInfo struct {
@@ -37,6 +38,7 @@ type TargetConfig struct {
 	YMax       int           `json:"ymax"`
 	DayRange   int           `json:"day_range"`
 	MonthRange int           `json:"month_range"`
+	Timezone   string        `json:"timezone"`
 	Targets    []*TargetInfo `json:"targets"`
 }
 
@@ -47,6 +49,8 @@ var (
 	SystemYMax       = 50 // 預設 y軸 最大值
 	SystemDayRange   = 7
 	SystemMonthRange = 3
+	SystemLocation   = time.Local // 預設使用系統時區
+	SystemTimezone   = ""         // 空字串代表使用系統時區
 	DataMutex        sync.Mutex
 	LogChan          = make(chan LogEntry, 100)
 	AppDir           string
@@ -138,6 +142,12 @@ func LoadTargets() error {
 			SystemYMax = config.YMax
 			SystemDayRange = config.DayRange
 			SystemMonthRange = config.MonthRange
+			if config.Timezone != "" {
+				if loc, err := time.LoadLocation(config.Timezone); err == nil {
+					SystemLocation = loc
+					SystemTimezone = config.Timezone
+				}
+			}
 			list = config.Targets
 		} else {
 			// 相容舊格式：若解析為物件失敗，則解析為原本的單純 targets 陣列
@@ -224,11 +234,12 @@ func SaveTargets() error {
 	}
 	
 	cleanConfig := struct {
-		Port       int `json:"port"`
-		Interval   int `json:"interval"`
-		YMax       int `json:"ymax"`
-		DayRange   int `json:"day_range"`
-		MonthRange int `json:"month_range"`
+		Port       int    `json:"port"`
+		Interval   int    `json:"interval"`
+		YMax       int    `json:"ymax"`
+		DayRange   int    `json:"day_range"`
+		MonthRange int    `json:"month_range"`
+		Timezone   string `json:"timezone"`
 		Targets    []struct {
 			Name string `json:"name"`
 			IP   string `json:"ip"`
@@ -239,6 +250,7 @@ func SaveTargets() error {
 		YMax:       SystemYMax,
 		DayRange:   SystemDayRange,
 		MonthRange: SystemMonthRange,
+		Timezone:   SystemTimezone,
 		Targets:    cleanTargets,
 	}
 	DataMutex.Unlock()

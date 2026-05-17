@@ -7,6 +7,8 @@ import (
 	"pingShow/internal/router"
 	"pingShow/internal/service"
 	"pingShow/pkg/cmdutils"
+
+	_ "time/tzdata" // 嵌入時區資料庫，確保在無 tzdata 的系統（如手機 Linux App）也能正確解析時區
 )
 
 func main() {
