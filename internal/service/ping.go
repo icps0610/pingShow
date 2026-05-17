@@ -13,7 +13,7 @@ func StartPingWorker(t *models.TargetInfo) {
 		pinger, err := ping.NewPinger(t.IP)
 		if err != nil {
 			updateTimeout(t)
-			time.Sleep(1 * time.Second)
+			time.Sleep(time.Duration(models.SystemInterval) * time.Second)
 			continue
 		}
 
@@ -60,7 +60,7 @@ func StartPingWorker(t *models.TargetInfo) {
 			t.AppendHistory(rtt)
 		}
 		models.DataMutex.Unlock()
-		time.Sleep(1 * time.Second)
+		time.Sleep(time.Duration(models.SystemInterval) * time.Second)
 	}
 }
 

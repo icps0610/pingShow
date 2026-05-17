@@ -1,5 +1,6 @@
 {
     "port": 80,
+    "interval": 1,
     "targets": [
         {
             "name": "local",

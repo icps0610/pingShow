@@ -32,16 +32,18 @@ type LogEntry struct {
 }
 
 type TargetConfig struct {
-	Port    int           `json:"port"`
-	Targets []*TargetInfo `json:"targets"`
+	Port     int           `json:"port"`
+	Interval int           `json:"interval"`
+	Targets  []*TargetInfo `json:"targets"`
 }
 
 var (
-	Targets    = []*TargetInfo{}
-	SystemPort = 80 // 預設使用 80 埠號
-	DataMutex  sync.Mutex
-	LogChan    = make(chan LogEntry, 100)
-	AppDir     string
+	Targets        = []*TargetInfo{}
+	SystemPort     = 80 // 預設使用 80 埠號
+	SystemInterval = 1  // 預設 ping 間隔 1 秒
+	DataMutex      sync.Mutex
+	LogChan        = make(chan LogEntry, 100)
+	AppDir         string
 )
 
 func init() {
@@ -60,7 +62,8 @@ func LoadTargets() error {
 	// 如果檔案不存在，則建立包含預設 port 與 targets 的設定檔
 	if _, err := os.Stat(filename); os.IsNotExist(err) {
 		defaultConfig := TargetConfig{
-			Port: 80,
+			Port:     80,
+			Interval: 1,
 			Targets: []*TargetInfo{
 				{Name: "local", IP: "192.168.0.1"},
 				{Name: "Taiwan", IP: "168.95.1.1"},
@@ -76,6 +79,7 @@ func LoadTargets() error {
 		}
 		list = defaultConfig.Targets
 		SystemPort = defaultConfig.Port
+		SystemInterval = defaultConfig.Interval
 	} else {
 		// 讀取 target.json
 		data, err := ioutil.ReadFile(filename)
@@ -89,7 +93,11 @@ func LoadTargets() error {
 			if config.Port <= 0 {
 				config.Port = 80
 			}
+			if config.Interval <= 0 {
+				config.Interval = 1
+			}
 			SystemPort = config.Port
+			SystemInterval = config.Interval
 			list = config.Targets
 		} else {
 			// 相容舊格式：若解析為物件失敗，則解析為原本的單純 targets 陣列
@@ -98,6 +106,7 @@ func LoadTargets() error {
 				return err
 			}
 			SystemPort = 80 // 預設使用 80 埠號
+			SystemInterval = 1
 			list = rawList
 		}
 	}
