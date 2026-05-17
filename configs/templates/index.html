@@ -693,7 +693,6 @@
         let touchendX = 0;
 
         function handleGesture() {
-            if (isLiveMode) return; // 即時模式不滑動
             if (touchendX < touchstartX - 50) {
                 shiftHour(1); // 左滑，同 D，下一小時
             }
@@ -702,12 +701,11 @@
             }
         }
 
-        const gridEl = document.querySelector('.grid');
-        gridEl.addEventListener('touchstart', e => {
+        document.addEventListener('touchstart', e => {
             touchstartX = e.changedTouches[0].screenX;
         }, { passive: true });
 
-        gridEl.addEventListener('touchend', e => {
+        document.addEventListener('touchend', e => {
             touchendX = e.changedTouches[0].screenX;
             handleGesture();
         }, { passive: true });
