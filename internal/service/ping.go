@@ -30,7 +30,7 @@ func StartPingWorker(t *models.TargetInfo) {
 		if err != nil || stats.PacketsRecv == 0 {
 			t.TO++
 			t.Last = -1
-			t.AppendHistory(0)
+			t.AppendHistory(-1)
 		} else {
 			t.Recv++
 			rtt := stats.MinRtt.Milliseconds()
@@ -69,7 +69,7 @@ func updateTimeout(t *models.TargetInfo) {
 	t.Sent++
 	t.TO++
 	t.Last = -1
-	t.AppendHistory(0)
+	t.AppendHistory(-1)
 	models.DataMutex.Unlock()
 }
 

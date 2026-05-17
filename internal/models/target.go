@@ -2,7 +2,6 @@ package models
 
 import (
 	"encoding/json"
-	"fmt"
 	"io/ioutil"
 	"os"
 	"sync"
@@ -42,18 +41,6 @@ var (
 	DataMutex  sync.Mutex
 	LogChan    = make(chan LogEntry, 100)
 )
-
-func generateIDFromIP(ip string) string {
-	var runes []rune
-	for _, r := range ip {
-		if (r >= 'a' && r <= 'z') || (r >= 'A' && r <= 'Z') || (r >= '0' && r <= '9') {
-			runes = append(runes, r)
-		} else {
-			runes = append(runes, '_')
-		}
-	}
-	return "t_" + string(runes)
-}
 
 func LoadTargets() error {
 	filename := "target.json"
@@ -104,20 +91,26 @@ func LoadTargets() error {
 		}
 	}
 
-	// 後處理：
-	// 1. 自動產生穩定且唯一的 ID（若 json 中指定了 id 則使用指定的，否則由 索引+IP 動態產生，不寫回 json）
-	// 2. 內建初始化 Min 為 9999
-	for idx, t := range list {
-		if t.ID == "" {
-			t.ID = fmt.Sprintf("t_%d_%s", idx+1, generateIDFromIP(t.IP))
+	// 後處理與去重：
+	// 1. 若發生重複 IP，直接合併去重
+	// 2. ID 直接使用 IP 字串本身
+	// 3. 內建初始化 Min 為 9999
+	var dedupList []*TargetInfo
+	seenIP := make(map[string]bool)
+	for _, t := range list {
+		if seenIP[t.IP] {
+			continue
 		}
+		seenIP[t.IP] = true
+		t.ID = t.IP
 		if t.Min == 0 {
 			t.Min = 9999
 		}
+		dedupList = append(dedupList, t)
 	}
 
 	DataMutex.Lock()
-	Targets = list
+	Targets = dedupList
 	DataMutex.Unlock()
 
 	return nil

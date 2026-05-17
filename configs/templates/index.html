@@ -393,8 +393,8 @@
                             'p95:<span>' + t.p95 + 'ms</span> ' +
                             't/o:<em>' + t.to + '</em></div>';
 
-                        const history = [...t.history];
-                        while (history.length < 60) history.unshift(0);
+                        const history = t.history.map(v => v === -1 ? null : v);
+                        while (history.length < 60) history.unshift(null);
 
                         charts[t.id].data.labels = Array.from({ length: 60 }, (_, i) => 60 - i);
                         charts[t.id].data.datasets[0].data = history;
@@ -441,21 +441,23 @@
                             }
                             if (!grouped[prefix]) {
                                 grouped[prefix] = { count: 0, metrics: {} };
-                                targetIDs.forEach(id => grouped[prefix].metrics[id] = 0);
+                                targetIDs.forEach(id => grouped[prefix].metrics[id] = { sum: 0, valid: 0 });
                             }
                             grouped[prefix].count++;
                             targetIDs.forEach(id => {
                                 let val = e.metrics[id];
-                                if (val === undefined || val === -1) val = 30;
-                                grouped[prefix].metrics[id] += val;
+                                if (val !== undefined && val !== -1) {
+                                    grouped[prefix].metrics[id].sum += val;
+                                    grouped[prefix].metrics[id].valid++;
+                                }
                             });
                         });
 
                         for (let prefix in grouped) {
-                            let count = grouped[prefix].count;
                             let avgMetrics = {};
                             targetIDs.forEach(id => {
-                                avgMetrics[id] = Math.round(grouped[prefix].metrics[id] / count);
+                                let g = grouped[prefix].metrics[id];
+                                avgMetrics[id] = g.valid > 0 ? Math.round(g.sum / g.valid) : null;
                             });
                             processedEntries.push({
                                 timestamp: prefix,
@@ -475,7 +477,7 @@
                     processedEntries.forEach(e => {
                         targetIDs.forEach(id => {
                             let val = e.metrics[id];
-                            if (val === undefined || val === -1) val = 30;
+                            if (val === undefined || val === -1) val = null;
                             parsedMetrics[id].push(val);
                         });
                     });
@@ -565,7 +567,7 @@
                     entries.forEach(e => {
                         targetIDs.forEach(id => {
                             let val = e.metrics[id];
-                            if (val === undefined || val === -1) val = 30;
+                            if (val === undefined || val === -1) val = null;
                             parsedMetrics[id].push(val);
                         });
                     });

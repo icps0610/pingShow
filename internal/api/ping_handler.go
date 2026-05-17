@@ -142,7 +142,7 @@ func calculateRangeAverage(start, end time.Time) map[string]int64 {
 							continue
 						}
 						if val == -1 {
-							val = 30 // Timeout fallback
+							continue // skip timeout for average calculation
 						}
 						sums[id] += val
 						counts[id]++
