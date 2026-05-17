@@ -1,0 +1,23 @@
+# 二進位執行檔與編譯產物
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
+*.syso
+
+# 系統運行的歷史日誌資料夾（內含連線紀錄，建議排除以防公開且佔空間）
+/logs/
+/script/
+
+# 編輯器與系統暫存檔
+.idea/
+.vscode/
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.swp
+*~
+Thumbs.db
+Desktop.ini
