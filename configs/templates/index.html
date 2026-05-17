@@ -5,7 +5,8 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>網路分析</title>
-    <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%2310b981' stroke-width='3' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='22 12 18 12 15 21 9 3 6 12 2 12'%3E%3C/polyline%3E%3C/svg%3E">
+    <link rel="icon"
+        href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%2310b981' stroke-width='3' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='22 12 18 12 15 21 9 3 6 12 2 12'%3E%3C/polyline%3E%3C/svg%3E">
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
         :root {
@@ -103,19 +104,7 @@
             color: #f59e0b;
         }
 
-        .hint {
-            font-size: 0.8rem;
-            color: var(--muted);
-            margin-left: 0.5rem;
-            margin-bottom: 0.5rem;
-        }
 
-        kbd {
-            background: #334155;
-            padding: 0.1rem 0.3rem;
-            border-radius: 3px;
-            font-size: 0.8rem;
-        }
 
         .grid {
             display: grid;
@@ -299,10 +288,10 @@
     <script>
         const charts = {};
         const palette = ['#4ade80', '#fbbf24', '#22d3ee', '#f87171', '#a3e635', '#f472b6', '#38bdf8', '#c084fc'];
-        const targetIDs = [{{ range .Targets }}"{{.ID}}",{{ end }}];
-        
+        const targetIDs = [{{ range .Targets }}"{{.ID}}", {{ end }}];
+
         // 根據目標項目數量，動態計算並注入電腦模式 (min-width: 769px) 的 CSS 佈局樣式
-        (function() {
+        (function () {
             const count = targetIDs.length;
             let css = '';
             if (count === 1) {
@@ -366,7 +355,7 @@
                         plugins: { legend: { display: false } },
                         scales: {
                             x: { display: false, ticks: { color: '#ffffff' } },
-                            y: { grid: { color: '#334155' }, ticks: { color: '#94a3b8' }, min: 0, max: 30 }
+                            y: { grid: { color: '#334155' }, ticks: { color: '#94a3b8' }, min: 0, max: {{ .YMax }} }
                         }
                     }
                 });
@@ -438,10 +427,9 @@
                                 prefix = e.timestamp.substring(0, 4) + '0'; // "15:00"
                             }
                             if (!grouped[prefix]) {
-                                grouped[prefix] = { count: 0, metrics: {} };
+                                grouped[prefix] = { metrics: {} };
                                 targetIDs.forEach(id => grouped[prefix].metrics[id] = { sum: 0, valid: 0 });
                             }
-                            grouped[prefix].count++;
                             targetIDs.forEach(id => {
                                 let val = e.metrics[id];
                                 if (val !== undefined && val !== -1) {
@@ -490,23 +478,23 @@
                         // 計算該歷史時段的詳細統計數據
                         const rtts = entries.map(e => e.metrics[id] === undefined ? -1 : e.metrics[id]);
                         const validRtts = rtts.filter(v => v !== -1);
-                        
+
                         const minVal = validRtts.length > 0 ? Math.min(...validRtts) : 0;
                         const maxVal = validRtts.length > 0 ? Math.max(...validRtts) : 0;
                         const sum = validRtts.reduce((a, b) => a + b, 0);
                         const avgVal = validRtts.length > 0 ? Math.round(sum / validRtts.length) : 0;
                         const toVal = rtts.filter(v => v === -1).length;
-                        
+
                         let sumJtr = 0;
                         let jtrCount = 0;
                         for (let i = 1; i < rtts.length; i++) {
-                            if (rtts[i] !== -1 && rtts[i-1] !== -1) {
-                                sumJtr += Math.abs(rtts[i] - rtts[i-1]);
+                            if (rtts[i] !== -1 && rtts[i - 1] !== -1) {
+                                sumJtr += Math.abs(rtts[i] - rtts[i - 1]);
                                 jtrCount++;
                             }
                         }
                         const jtrVal = jtrCount > 0 ? Math.round(sumJtr / jtrCount) : 0;
-                        
+
                         const sorted = [...validRtts].sort((a, b) => a - b);
                         const p95Idx = Math.floor(sorted.length * 0.95);
                         const p95Val = sorted.length > 0 ? sorted[p95Idx >= sorted.length ? sorted.length - 1 : p95Idx] : 0;

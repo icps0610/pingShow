@@ -25,12 +25,13 @@
 
 ### 1. 調整連接埠與增刪監控目標 (設定 `target.json`)
 當你第一次執行本程式後，根目錄會自動產生一個預設的 `target.json` 設定檔。
-你可以自由變更網頁服務執行的連接埠（`port`）、Ping 的間隔秒數（`interval`），並在 `targets` 陣列中增減你想監控的名稱 (`name`) 與網址/IP (`ip`)：
+你可以自由變更網頁服務執行的連接埠（`port`）、Ping 的間隔秒數（`interval`）、圖表 Y 軸的最大值（`ymax`），並在 `targets` 陣列中增減你想監控的名稱 (`name`) 與網址/IP (`ip`)：
 
 ```json
 {
     "port": 80,
     "interval": 1,
+    "ymax": 50,
     "targets": [
         {
             "name": "local",

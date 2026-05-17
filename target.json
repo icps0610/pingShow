@@ -1,6 +1,7 @@
 {
     "port": 80,
     "interval": 1,
+    "ymax": 50,
     "targets": [
         {
             "name": "local",

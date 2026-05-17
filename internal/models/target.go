@@ -34,6 +34,7 @@ type LogEntry struct {
 type TargetConfig struct {
 	Port     int           `json:"port"`
 	Interval int           `json:"interval"`
+	YMax     int           `json:"ymax"`
 	Targets  []*TargetInfo `json:"targets"`
 }
 
@@ -41,6 +42,7 @@ var (
 	Targets        = []*TargetInfo{}
 	SystemPort     = 80 // 預設使用 80 埠號
 	SystemInterval = 1  // 預設 ping 間隔 1 秒
+	SystemYMax     = 50 // 預設 y軸 最大值
 	DataMutex      sync.Mutex
 	LogChan        = make(chan LogEntry, 100)
 	AppDir         string
@@ -64,6 +66,7 @@ func LoadTargets() error {
 		defaultConfig := struct {
 			Port     int `json:"port"`
 			Interval int `json:"interval"`
+			YMax     int `json:"ymax"`
 			Targets  []struct {
 				Name string `json:"name"`
 				IP   string `json:"ip"`
@@ -71,6 +74,7 @@ func LoadTargets() error {
 		}{
 			Port:     80,
 			Interval: 1,
+			YMax:     50,
 			Targets: []struct {
 				Name string `json:"name"`
 				IP   string `json:"ip"`
@@ -93,6 +97,7 @@ func LoadTargets() error {
 		}
 		SystemPort = defaultConfig.Port
 		SystemInterval = defaultConfig.Interval
+		SystemYMax = defaultConfig.YMax
 	} else {
 		// 讀取 target.json
 		data, err := ioutil.ReadFile(filename)
@@ -109,8 +114,12 @@ func LoadTargets() error {
 			if config.Interval <= 0 {
 				config.Interval = 1
 			}
+			if config.YMax <= 0 {
+				config.YMax = 50
+			}
 			SystemPort = config.Port
 			SystemInterval = config.Interval
+			SystemYMax = config.YMax
 			list = config.Targets
 		} else {
 			// 相容舊格式：若解析為物件失敗，則解析為原本的單純 targets 陣列
@@ -120,6 +129,7 @@ func LoadTargets() error {
 			}
 			SystemPort = 80 // 預設使用 80 埠號
 			SystemInterval = 1
+			SystemYMax = 50
 			list = rawList
 		}
 	}
