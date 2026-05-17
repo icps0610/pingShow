@@ -404,12 +404,15 @@
                 });
         }
 
-        let isShiftingForward = false;
-
         function loadHistory() {
             const dateInput = document.getElementById('query-date').value.replace(/-/g, '');
             const hourInput = document.getElementById('query-hour').value;
             if (!dateInput) return;
+
+            isLiveMode = false;
+            clearInterval(liveInterval);
+            const btnLive = document.getElementById('btn-live');
+            if (btnLive) btnLive.style.display = 'inline-block';
 
             fetch('/api/history?date=' + dateInput + '&hour=' + hourInput)
                 .then(res => {
@@ -418,11 +421,6 @@
                 })
                 .then(entries => {
                     if (!entries || entries.length === 0) throw new Error('無數據');
-                    isLiveMode = false;
-                    clearInterval(liveInterval);
-
-                    const btnLive = document.getElementById('btn-live');
-                    if (btnLive) btnLive.style.display = 'inline-block';
 
                     const aggMode = document.getElementById('aggregate-mode').value;
                     let processedEntries = [];
@@ -525,22 +523,17 @@
                     });
                 })
                 .catch(err => {
-                    if (isShiftingForward) {
-                        switchToLive();
-                    } else {
-                        const modeBadge = document.getElementById('current-mode');
-                        modeBadge.className = 'mode-status mode-hist';
-                        modeBadge.innerText = '讀取失敗: 無歷史資料';
+                    const modeBadge = document.getElementById('current-mode');
+                    modeBadge.className = 'mode-status mode-hist';
+                    modeBadge.innerText = `歷史回放: 讀取失敗 (${dateInput} ${hourInput}點)`;
 
-                        // 清空圖表與數據面板，避免產生誤會
-                        targetIDs.forEach(id => {
-                            charts[id].data.labels = [];
-                            charts[id].data.datasets[0].data = [];
-                            document.getElementById('stats-' + id).innerHTML = '<div class="stats-row" style="color:#94a3b8; text-align:center;">無歷史資料</div>';
-                            charts[id].update();
-                        });
-                    }
-                    isShiftingForward = false;
+                    // 清空圖表與數據面板，避免產生誤會
+                    targetIDs.forEach(id => {
+                        charts[id].data.labels = [];
+                        charts[id].data.datasets[0].data = [];
+                        document.getElementById('stats-' + id).innerHTML = '<div class="stats-row" style="color:#94a3b8; text-align:center;">無歷史資料</div>';
+                        charts[id].update();
+                    });
                 });
         }
 
@@ -651,8 +644,6 @@
                 dateInput.value = `${y}-${m}-${d}`;
                 hourInput.value = String(today.getHours()).padStart(2, '0');
             }
-
-            isShiftingForward = (delta > 0);
 
             let currentDate = new Date(dateInput.value);
             let currentHour = parseInt(hourInput.value, 10);
