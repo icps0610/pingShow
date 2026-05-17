@@ -32,20 +32,24 @@ type LogEntry struct {
 }
 
 type TargetConfig struct {
-	Port     int           `json:"port"`
-	Interval int           `json:"interval"`
-	YMax     int           `json:"ymax"`
-	Targets  []*TargetInfo `json:"targets"`
+	Port       int           `json:"port"`
+	Interval   int           `json:"interval"`
+	YMax       int           `json:"ymax"`
+	DayRange   int           `json:"day_range"`
+	MonthRange int           `json:"month_range"`
+	Targets    []*TargetInfo `json:"targets"`
 }
 
 var (
-	Targets        = []*TargetInfo{}
-	SystemPort     = 80 // 預設使用 80 埠號
-	SystemInterval = 1  // 預設 ping 間隔 1 秒
-	SystemYMax     = 50 // 預設 y軸 最大值
-	DataMutex      sync.Mutex
-	LogChan        = make(chan LogEntry, 100)
-	AppDir         string
+	Targets          = []*TargetInfo{}
+	SystemPort       = 80 // 預設使用 80 埠號
+	SystemInterval   = 1  // 預設 ping 間隔 1 秒
+	SystemYMax       = 50 // 預設 y軸 最大值
+	SystemDayRange   = 7
+	SystemMonthRange = 3
+	DataMutex        sync.Mutex
+	LogChan          = make(chan LogEntry, 100)
+	AppDir           string
 )
 
 func init() {
@@ -64,17 +68,21 @@ func LoadTargets() error {
 	// 如果檔案不存在，則建立包含預設 port 與 targets 的設定檔
 	if _, err := os.Stat(filename); os.IsNotExist(err) {
 		defaultConfig := struct {
-			Port     int `json:"port"`
-			Interval int `json:"interval"`
-			YMax     int `json:"ymax"`
-			Targets  []struct {
+			Port       int `json:"port"`
+			Interval   int `json:"interval"`
+			YMax       int `json:"ymax"`
+			DayRange   int `json:"day_range"`
+			MonthRange int `json:"month_range"`
+			Targets    []struct {
 				Name string `json:"name"`
 				IP   string `json:"ip"`
 			} `json:"targets"`
 		}{
-			Port:     80,
-			Interval: 1,
-			YMax:     50,
+			Port:       80,
+			Interval:   1,
+			YMax:       50,
+			DayRange:   7,
+			MonthRange: 3,
 			Targets: []struct {
 				Name string `json:"name"`
 				IP   string `json:"ip"`
@@ -98,6 +106,8 @@ func LoadTargets() error {
 		SystemPort = defaultConfig.Port
 		SystemInterval = defaultConfig.Interval
 		SystemYMax = defaultConfig.YMax
+		SystemDayRange = defaultConfig.DayRange
+		SystemMonthRange = defaultConfig.MonthRange
 	} else {
 		// 讀取 target.json
 		data, err := ioutil.ReadFile(filename)
@@ -117,9 +127,17 @@ func LoadTargets() error {
 			if config.YMax <= 0 {
 				config.YMax = 50
 			}
+			if config.DayRange <= 0 {
+				config.DayRange = 7
+			}
+			if config.MonthRange <= 0 {
+				config.MonthRange = 3
+			}
 			SystemPort = config.Port
 			SystemInterval = config.Interval
 			SystemYMax = config.YMax
+			SystemDayRange = config.DayRange
+			SystemMonthRange = config.MonthRange
 			list = config.Targets
 		} else {
 			// 相容舊格式：若解析為物件失敗，則解析為原本的單純 targets 陣列
@@ -130,6 +148,8 @@ func LoadTargets() error {
 			SystemPort = 80 // 預設使用 80 埠號
 			SystemInterval = 1
 			SystemYMax = 50
+			SystemDayRange = 7
+			SystemMonthRange = 3
 			list = rawList
 		}
 	}
@@ -178,3 +198,55 @@ func (t *TargetInfo) ResetStats() {
 	t.TotalRTT = 0
 	t.RawRTTs = nil
 }
+
+func IsTargetActive(ip string) bool {
+	DataMutex.Lock()
+	defer DataMutex.Unlock()
+	for _, t := range Targets {
+		if t.IP == ip {
+			return true
+		}
+	}
+	return false
+}
+
+func SaveTargets() error {
+	filename := filepath.Join(AppDir, "target.json")
+	
+	DataMutex.Lock()
+	cleanTargets := make([]struct {
+		Name string `json:"name"`
+		IP   string `json:"ip"`
+	}, len(Targets))
+	for i, t := range Targets {
+		cleanTargets[i].Name = t.Name
+		cleanTargets[i].IP = t.IP
+	}
+	
+	cleanConfig := struct {
+		Port       int `json:"port"`
+		Interval   int `json:"interval"`
+		YMax       int `json:"ymax"`
+		DayRange   int `json:"day_range"`
+		MonthRange int `json:"month_range"`
+		Targets    []struct {
+			Name string `json:"name"`
+			IP   string `json:"ip"`
+		} `json:"targets"`
+	}{
+		Port:       SystemPort,
+		Interval:   SystemInterval,
+		YMax:       SystemYMax,
+		DayRange:   SystemDayRange,
+		MonthRange: SystemMonthRange,
+		Targets:    cleanTargets,
+	}
+	DataMutex.Unlock()
+
+	data, err := json.MarshalIndent(cleanConfig, "", "    ")
+	if err != nil {
+		return err
+	}
+	return ioutil.WriteFile(filename, data, 0644)
+}
+

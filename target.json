@@ -2,6 +2,8 @@
     "port": 80,
     "interval": 1,
     "ymax": 50,
+    "day_range": 14,
+    "month_range": 3,
     "targets": [
         {
             "name": "local",

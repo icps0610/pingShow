@@ -266,6 +266,7 @@
             <button onclick="loadHistory()">載入</button>
         </div>
         <div class="mode-group">
+            <button id="btn-settings" onclick="openSettingsModal()" style="background: #475569; font-weight: bold;">⚙️ 設定</button>
             <button id="btn-live" onclick="switchToLive()" style="background: #10b981; display: none;">切回即時</button>
             <div id="current-mode" class="mode-status mode-live">● LIVE 即時監控中</div>
         </div>
@@ -320,7 +321,7 @@
 
         const hourSelect = document.getElementById('query-hour');
         for (let i = 0; i < 24; i++) {
-            let h = i < 10 ? '0' + i : i;
+            const h = String(i).padStart(2, '0'); // 永遠為字串，如 "09", "10"
             hourSelect.innerHTML += '<option value="' + h + '">' + h + ' 點</option>';
         }
 
@@ -546,7 +547,7 @@
                     const btnLive = document.getElementById('btn-live');
                     if (btnLive) btnLive.style.display = 'inline-block';
 
-                    let title = mode === 'day' ? '日平均 (過去30天)' : '月平均 (過去12個月)';
+                    let title = mode === 'day' ? '日平均 (過去{{ .DayRange }}天)' : '月平均 (過去{{ .MonthRange }}個月)';
                     modeBadge.innerText = '區間總覽: ' + title;
 
                     const labels = entries.map(e => e.timestamp);
@@ -568,7 +569,11 @@
                         charts[id].options.scales.x.display = true;
                         charts[id].options.scales.x.grid = { color: '#1e293b' };
 
-                        document.getElementById('stats-' + id).innerHTML = '';
+                        if (entries.length === 0) {
+                            document.getElementById('stats-' + id).innerHTML = '<div class="stats-row" style="color:#94a3b8; text-align:center;">此區間無數據</div>';
+                        } else {
+                            document.getElementById('stats-' + id).innerHTML = '';
+                        }
 
                         charts[id].update();
                     });
@@ -699,7 +704,160 @@
         initCharts();
         liveInterval = setInterval(updateLiveMetrics, 1000);
         updateLiveMetrics();
+
+        // ⚙️ 設定視窗 JS 邏輯
+        function openSettingsModal() {
+            fetch('/api/settings')
+                .then(res => res.json())
+                .then(data => {
+                    document.getElementById('settings-port').value = data.port;
+                    document.getElementById('settings-interval').value = data.interval;
+                    document.getElementById('settings-ymax').value = data.ymax;
+                    document.getElementById('settings-day-range').value = data.day_range;
+                    document.getElementById('settings-month-range').value = data.month_range;
+                    
+                    const container = document.getElementById('settings-targets-list');
+                    container.innerHTML = '';
+                    
+                    data.targets.forEach(t => {
+                        addSettingsTargetRow(t.name, t.ip);
+                    });
+                    
+                    document.getElementById('settings-modal').style.display = 'flex';
+                })
+                .catch(err => {
+                    alert('無法取得設定: ' + err.message);
+                });
+        }
+
+        function closeSettingsModal() {
+            document.getElementById('settings-modal').style.display = 'none';
+        }
+
+        function addSettingsTargetRow(name = '', ip = '') {
+            const container = document.getElementById('settings-targets-list');
+            const row = document.createElement('div');
+            row.className = 'settings-target-row';
+            row.style.display = 'flex';
+            row.style.gap = '0.5rem';
+            row.style.alignItems = 'center';
+            row.innerHTML = `
+                <input type="text" placeholder="名稱 (e.g. Google)" value="${name}" class="target-name-input" style="flex: 1; background: #0f172a; border: 1px solid #334155; color: #f8fafc; padding: 0.35rem; border-radius: 4px; font-size: 0.85rem; font-family: monospace;">
+                <input type="text" placeholder="IP/網址 (e.g. 8.8.8.8)" value="${ip}" class="target-ip-input" style="flex: 1.5; background: #0f172a; border: 1px solid #334155; color: #f8fafc; padding: 0.35rem; border-radius: 4px; font-size: 0.85rem; font-family: monospace;">
+                <button type="button" onclick="this.parentElement.remove()" style="background: #ef4444; color: white; border: none; padding: 0.35rem 0.5rem; border-radius: 4px; font-size: 0.85rem; cursor: pointer; font-weight: bold;">&times;</button>
+            `;
+            container.appendChild(row);
+        }
+
+        function saveSettings() {
+            const port = parseInt(document.getElementById('settings-port').value, 10);
+            const interval = parseInt(document.getElementById('settings-interval').value, 10);
+            const ymax = parseInt(document.getElementById('settings-ymax').value, 10);
+            const day_range = parseInt(document.getElementById('settings-day-range').value, 10);
+            const month_range = parseInt(document.getElementById('settings-month-range').value, 10);
+            
+            const targetRows = document.querySelectorAll('.settings-target-row');
+            const targets = [];
+            let valid = true;
+            
+            targetRows.forEach(row => {
+                const name = row.querySelector('.target-name-input').value.trim();
+                const ip = row.querySelector('.target-ip-input').value.trim();
+                if (ip) {
+                    targets.push({ name: name || ip, ip: ip });
+                } else {
+                    valid = false;
+                }
+            });
+            
+            if (!valid || targets.length === 0) {
+                alert('所有目標的 IP/網址 皆不能留空，且必須至少有一個監控目標！');
+                return;
+            }
+            
+            const payload = {
+                port: port,
+                interval: interval,
+                ymax: ymax,
+                day_range: day_range,
+                month_range: month_range,
+                targets: targets
+            };
+            
+            fetch('/api/settings', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload)
+            })
+            .then(res => {
+                if (!res.ok) {
+                    return res.json().then(data => { throw new Error(data.error || '儲存失敗') });
+                }
+                return res.json();
+            })
+            .then(data => {
+                alert('設定儲存成功！' + (port !== {{ .Port }} ? '\n(注意：連接埠已修改，重啟程式後才會生效！)' : ''));
+                closeSettingsModal();
+                window.location.reload();
+            })
+            .catch(err => {
+                alert('儲存設定失敗: ' + err.message);
+            });
+        }
     </script>
+
+    <!-- 設定視窗 Modal -->
+    <div id="settings-modal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(15, 23, 42, 0.85); backdrop-filter: blur(8px); z-index: 1000; justify-content: center; align-items: center;">
+        <div style="background: #1e293b; border: 1px solid #334155; border-radius: 12px; width: 90%; max-width: 500px; max-height: 85vh; display: flex; flex-direction: column; overflow: hidden; box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.5);">
+            <div style="padding: 1rem; border-bottom: 1px solid #334155; display: flex; justify-content: space-between; align-items: center; background: #0f172a;">
+                <h3 style="margin: 0; font-size: 1.2rem; color: #f8fafc; display: flex; align-items: center; gap: 0.5rem;">⚙️ 系統設定</h3>
+                <span onclick="closeSettingsModal()" style="cursor: pointer; font-size: 1.5rem; color: #94a3b8; line-height: 1;">&times;</span>
+            </div>
+            <div style="padding: 1.25rem; overflow-y: auto; flex: 1; display: flex; flex-direction: column; gap: 1rem;">
+                <div style="display: flex; gap: 0.75rem;">
+                    <div style="flex: 1; display: flex; flex-direction: column; gap: 0.25rem;">
+                        <label style="font-size: 0.85rem; color: #94a3b8;">Port (連接埠)</label>
+                        <input type="number" id="settings-port" style="background: #0f172a; border: 1px solid #334155; color: #f8fafc; padding: 0.5rem; border-radius: 6px; font-family: monospace;" placeholder="80">
+                        <span style="font-size: 0.7rem; color: #ef4444;">* 修改此項需重新啟動</span>
+                    </div>
+                    <div style="flex: 1; display: flex; flex-direction: column; gap: 0.25rem;">
+                        <label style="font-size: 0.85rem; color: #94a3b8;">Interval (Ping 間隔秒)</label>
+                        <input type="number" id="settings-interval" style="background: #0f172a; border: 1px solid #334155; color: #f8fafc; padding: 0.5rem; border-radius: 6px; font-family: monospace;" placeholder="1">
+                    </div>
+                </div>
+                <div style="display: flex; gap: 0.75rem;">
+                    <div style="flex: 1; display: flex; flex-direction: column; gap: 0.25rem;">
+                        <label style="font-size: 0.85rem; color: #94a3b8;">Y軸 最大預設值</label>
+                        <input type="number" id="settings-ymax" style="background: #0f172a; border: 1px solid #334155; color: #f8fafc; padding: 0.5rem; border-radius: 6px; font-family: monospace;" placeholder="50">
+                    </div>
+                </div>
+                <div style="display: flex; gap: 0.75rem;">
+                    <div style="flex: 1; display: flex; flex-direction: column; gap: 0.25rem;">
+                        <label style="font-size: 0.85rem; color: #94a3b8;">日平均天數 (day_range)</label>
+                        <input type="number" id="settings-day-range" style="background: #0f172a; border: 1px solid #334155; color: #f8fafc; padding: 0.5rem; border-radius: 6px; font-family: monospace;" placeholder="7">
+                    </div>
+                    <div style="flex: 1; display: flex; flex-direction: column; gap: 0.25rem;">
+                        <label style="font-size: 0.85rem; color: #94a3b8;">月平均月份 (month_range)</label>
+                        <input type="number" id="settings-month-range" style="background: #0f172a; border: 1px solid #334155; color: #f8fafc; padding: 0.5rem; border-radius: 6px; font-family: monospace;" placeholder="3">
+                    </div>
+                </div>
+                
+                <div style="border-top: 1px dashed #334155; margin-top: 0.5rem; padding-top: 0.75rem;">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem;">
+                        <label style="font-size: 0.9rem; font-weight: bold; color: #f8fafc;">🎯 監控目標列表</label>
+                        <button type="button" onclick="addSettingsTargetRow()" style="background: #10b981; color: white; border: none; padding: 0.25rem 0.5rem; border-radius: 4px; font-size: 0.8rem; cursor: pointer;">+ 新增目標</button>
+                    </div>
+                    <div id="settings-targets-list" style="display: flex; flex-direction: column; gap: 0.5rem; max-height: 200px; overflow-y: auto; padding-right: 0.25rem;">
+                        <!-- 動態生成目標 row -->
+                    </div>
+                </div>
+            </div>
+            <div style="padding: 1rem; border-top: 1px solid #334155; display: flex; justify-content: flex-end; gap: 0.5rem; background: #0f172a;">
+                <button type="button" onclick="closeSettingsModal()" style="background: #475569; color: white; border: none; padding: 0.5rem 1rem; border-radius: 6px; font-weight: bold; cursor: pointer;">取消</button>
+                <button type="button" onclick="saveSettings()" style="background: #2563eb; color: white; border: none; padding: 0.5rem 1rem; border-radius: 6px; font-weight: bold; cursor: pointer;">儲存設定</button>
+            </div>
+        </div>
+    </div>
 </body>
 
 </html>

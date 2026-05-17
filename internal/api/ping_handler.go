@@ -67,8 +67,8 @@ func HandleRangeHistory(c *gin.Context) {
 	var results []models.LogEntry
 
 	if mode == "day" {
-		// 往前推 30 天，每天一個點
-		for i := 29; i >= 0; i-- {
+		// 依照設定檔的 DayRange，每天一個點
+		for i := models.SystemDayRange - 1; i >= 0; i-- {
 			targetDate := endDate.AddDate(0, 0, -i)
 			avgMetrics := calculateDayAverage(targetDate)
 			if avgMetrics != nil {
@@ -79,8 +79,8 @@ func HandleRangeHistory(c *gin.Context) {
 			}
 		}
 	} else if mode == "month" {
-		// 往前推 12 個月，每月一個點
-		for i := 11; i >= 0; i-- {
+		// 依照設定檔的 MonthRange，每月一個點
+		for i := models.SystemMonthRange - 1; i >= 0; i-- {
 			// 抓取該月的第一天到最後一天
 			targetMonth := endDate.AddDate(0, -i, 0)
 			monthStart := time.Date(targetMonth.Year(), targetMonth.Month(), 1, 0, 0, 0, 0, targetMonth.Location())

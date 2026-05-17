@@ -11,6 +11,9 @@ import (
 
 func StartPingWorker(t *models.TargetInfo) {
 	for {
+		if !models.IsTargetActive(t.IP) {
+			return // Target was deleted, stop worker
+		}
 		pinger, err := ping.NewPinger(t.IP)
 		if err != nil {
 			updateTimeout(t)

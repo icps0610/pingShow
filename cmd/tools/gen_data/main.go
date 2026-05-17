@@ -18,22 +18,19 @@ func main() {
 	_ = os.MkdirAll("logs", 0755)
 
 	now := time.Now()
-	// 往前推 30 天
-	start := now.AddDate(0, 0, -30)
+	start := now.AddDate(-1, 0, 0) // 往前推一年 (365天)
 	
-	// 把 start 調整到該日的 00:00:00
 	start = time.Date(start.Year(), start.Month(), start.Day(), 0, 0, 0, 0, start.Location())
 
 	fmt.Println("開始產生測試資料，時間範圍：", start.Format("2006-01-02"), "至", now.Format("2006-01-02"))
 
 	rand.Seed(time.Now().UnixNano())
 
-	// 依照小時迴圈
-	for t := start; t.Before(now); t = t.Add(1 * time.Hour) {
+	// 依照天迴圈，每天只產生中午 12 點的日誌 (大幅加快速度且足以測試區間平均)
+	for t := start; t.Before(now); t = t.AddDate(0, 0, 1) {
 		dateStr := t.Format("20060102")
-		hourStr := t.Format("15")
 		
-		fileName := fmt.Sprintf("log_%s_%s.json", dateStr, hourStr)
+		fileName := fmt.Sprintf("log_%s_12.json", dateStr)
 		filePath := filepath.Join("logs", fileName)
 
 		f, err := os.Create(filePath)
@@ -42,38 +39,25 @@ func main() {
 			return
 		}
 
-		// 每個小時有 3600 秒
-		for sec := 0; sec < 3600; sec++ {
-			// 如果超過現在時間就停止
-			currentSec := t.Add(time.Duration(sec) * time.Second)
-			if currentSec.After(now) {
-				break
-			}
-
-			// 隨機生成波動的 RTT，偶爾產生 timeout (-1)
+		// 每天產生 5 筆紀錄就足夠測試平均值
+		for sec := 0; sec < 5; sec++ {
 			local := int64(rand.Intn(5) + 1)
-			matsu := int64(rand.Intn(20) + 30)
-			tw_dns := int64(rand.Intn(10) + 5)
 			line := int64(rand.Intn(40) + 40)
+			taiwan := int64(rand.Intn(10) + 5)
+			google := int64(rand.Intn(15) + 10)
 
-			// 模擬偶發性 Timeout 或尖峰 (1% 機率)
-			if rand.Intn(100) < 1 {
-				matsu = -1
-			} else if rand.Intn(100) < 2 {
-				matsu += 150 // 尖峰
-			}
-
-			if rand.Intn(100) < 1 {
+			// 模擬偶發性 Timeout (-1)
+			if rand.Intn(100) < 5 {
 				line = -1
 			}
 
 			entry := LogEntry{
-				Timestamp: currentSec.Format("15:04:05"),
+				Timestamp: fmt.Sprintf("12:0%d:00", sec),
 				Metrics: map[string]int64{
-					"local":  local,
-					"matsu":  matsu,
-					"tw_dns": tw_dns,
-					"line":   line,
+					"192.168.0.1":    local,
+					"access.line.me": line,
+					"168.95.1.1":     taiwan,
+					"8.8.8.8":        google,
 				},
 			}
 

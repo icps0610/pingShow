@@ -25,6 +25,8 @@ func SetupRouter() *gin.Engine {
 		apiGroup.GET("/metrics", api.HandleMetrics)
 		apiGroup.GET("/history", api.HandleHistory)
 		apiGroup.GET("/history_range", api.HandleRangeHistory)
+		apiGroup.GET("/settings", api.HandleGetSettings)
+		apiGroup.POST("/settings", api.HandleSaveSettings)
 	}
 
 	return r
