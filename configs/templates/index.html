@@ -98,6 +98,7 @@
             cursor: pointer;
             border: none;
             font-weight: bold;
+            white-space: nowrap; /* 確保所有按鈕文字絕不折行 */
         }
 
         .control-panel button:hover {
@@ -265,11 +266,14 @@
             .mode-group {
                 width: 100%;
                 justify-content: center;
+                flex-wrap: wrap; /* 手機端寬度不足時，允許按鈕與狀態欄自動折行 */
+                gap: 0.5rem;
             }
 
             #current-mode {
                 width: auto;
                 text-align: center;
+                white-space: nowrap; /* 確保狀態文字始終保持清爽單行，不被擠壓 */
             }
 
             .stats-items {
