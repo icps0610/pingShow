@@ -61,10 +61,20 @@ func LoadTargets() error {
 
 	// 如果檔案不存在，則建立包含預設 port 與 targets 的設定檔
 	if _, err := os.Stat(filename); os.IsNotExist(err) {
-		defaultConfig := TargetConfig{
+		defaultConfig := struct {
+			Port     int `json:"port"`
+			Interval int `json:"interval"`
+			Targets  []struct {
+				Name string `json:"name"`
+				IP   string `json:"ip"`
+			} `json:"targets"`
+		}{
 			Port:     80,
 			Interval: 1,
-			Targets: []*TargetInfo{
+			Targets: []struct {
+				Name string `json:"name"`
+				IP   string `json:"ip"`
+			}{
 				{Name: "local", IP: "192.168.0.1"},
 				{Name: "Taiwan", IP: "168.95.1.1"},
 				{Name: "Google", IP: "8.8.8.8"},
@@ -77,7 +87,10 @@ func LoadTargets() error {
 		if err := ioutil.WriteFile(filename, data, 0644); err != nil {
 			return err
 		}
-		list = defaultConfig.Targets
+		
+		for _, dt := range defaultConfig.Targets {
+			list = append(list, &TargetInfo{Name: dt.Name, IP: dt.IP})
+		}
 		SystemPort = defaultConfig.Port
 		SystemInterval = defaultConfig.Interval
 	} else {

@@ -2,6 +2,7 @@ package service
 
 import (
 	"pingShow/internal/models"
+	"runtime"
 	"sort"
 	"time"
 
@@ -19,7 +20,11 @@ func StartPingWorker(t *models.TargetInfo) {
 
 		pinger.Count = 1
 		pinger.Timeout = time.Second
-		pinger.SetPrivileged(true)
+		if runtime.GOOS == "windows" {
+			pinger.SetPrivileged(true)
+		} else {
+			pinger.SetPrivileged(false)
+		}
 
 		err = pinger.Run()
 		stats := pinger.Statistics()

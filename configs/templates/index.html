@@ -298,7 +298,7 @@
 
     <script>
         const charts = {};
-        const palette = ['#4ade80', '#22d3ee', '#fbbf24', '#f87171', '#c084fc', '#f472b6', '#38bdf8', '#a3e635'];
+        const palette = ['#4ade80', '#fbbf24', '#22d3ee', '#f87171', '#a3e635', '#f472b6', '#38bdf8', '#c084fc'];
         const targetIDs = [{{ range .Targets }}"{{.ID}}",{{ end }}];
         
         // 根據目標項目數量，動態計算並注入電腦模式 (min-width: 769px) 的 CSS 佈局樣式
@@ -531,6 +531,14 @@
                         const modeBadge = document.getElementById('current-mode');
                         modeBadge.className = 'mode-status mode-hist';
                         modeBadge.innerText = '讀取失敗: 無歷史資料';
+
+                        // 清空圖表與數據面板，避免產生誤會
+                        targetIDs.forEach(id => {
+                            charts[id].data.labels = [];
+                            charts[id].data.datasets[0].data = [];
+                            document.getElementById('stats-' + id).innerHTML = '<div class="stats-row" style="color:#94a3b8; text-align:center;">無歷史資料</div>';
+                            charts[id].update();
+                        });
                     }
                     isShiftingForward = false;
                 });
@@ -601,6 +609,16 @@
             const btnLive = document.getElementById('btn-live');
             if (btnLive) btnLive.style.display = 'none';
 
+            // 切回即時模式時，把上方的時間控制項同步回「現在」
+            const now = new Date();
+            const y = now.getFullYear();
+            const m = String(now.getMonth() + 1).padStart(2, '0');
+            const d = String(now.getDate()).padStart(2, '0');
+            const dateInput = document.getElementById('query-date');
+            const hourInput = document.getElementById('query-hour');
+            if (dateInput) dateInput.value = `${y}-${m}-${d}`;
+            if (hourInput) hourInput.value = String(now.getHours()).padStart(2, '0');
+
             liveInterval = setInterval(updateLiveMetrics, 1000);
             updateLiveMetrics();
         }
@@ -647,6 +665,16 @@
             } else if (currentHour > 23) {
                 currentHour = 0;
                 currentDate.setDate(currentDate.getDate() + 1);
+            }
+
+            // 防呆：不能超過或等於當下的時間 (因為當下的小時必須使用 LIVE 模式)
+            const now = new Date();
+            const attemptDate = new Date(currentDate.getFullYear(), currentDate.getMonth(), currentDate.getDate(), currentHour);
+            const maxDate = new Date(now.getFullYear(), now.getMonth(), now.getDate(), now.getHours());
+
+            if (attemptDate >= maxDate) {
+                switchToLive();
+                return;
             }
 
             const y = currentDate.getFullYear();
