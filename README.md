@@ -1,6 +1,6 @@
 # 🌐 網路連線狀態即時監測系統 (PingShow)
 
-<img width="382" height="815" alt="image" src="https://github.com/user-attachments/assets/4808b475-5a3e-4585-93b6-6e2a531c7876" />
+<img width="1393" height="816" alt="image" src="https://github.com/user-attachments/assets/779a0a75-5efb-4a3c-a0f7-9c549e467137" />
 
 ---
 
