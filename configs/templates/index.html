@@ -623,20 +623,26 @@
             const hourInput = document.getElementById('query-hour');
             if (!dateInput.value) return;
 
+            let transitioningFromLive = false;
+
             if (isLiveMode && delta < 0) {
-                // 如果目前是即時監控且按 A（往回看），先將日期時間設為當下的時間，以便往回推一小時
+                // 如果目前是即時監控且按 A（往回看），先進入當前小時的歷史模式
                 const today = new Date();
                 const y = today.getFullYear();
                 const m = String(today.getMonth() + 1).padStart(2, '0');
                 const d = String(today.getDate()).padStart(2, '0');
                 dateInput.value = `${y}-${m}-${d}`;
                 hourInput.value = String(today.getHours()).padStart(2, '0');
+                transitioningFromLive = true;
             }
 
             let currentDate = new Date(dateInput.value);
             let currentHour = parseInt(hourInput.value, 10);
 
-            currentHour += delta;
+            // 若剛從即時模式退下，第一下只進入「當前小時」的歷史紀錄，不扣除時間
+            if (!transitioningFromLive) {
+                currentHour += delta;
+            }
 
             if (currentHour < 0) {
                 currentHour = 23;
@@ -646,12 +652,13 @@
                 currentDate.setDate(currentDate.getDate() + 1);
             }
 
-            // 防呆：不能超過或等於當下的時間 (因為當下的小時必須使用 LIVE 模式)
+            // 防呆：不能超過當下的時間
             const now = new Date();
             const attemptDate = new Date(currentDate.getFullYear(), currentDate.getMonth(), currentDate.getDate(), currentHour);
             const maxDate = new Date(now.getFullYear(), now.getMonth(), now.getDate(), now.getHours());
 
-            if (attemptDate >= maxDate) {
+            // 必須是 "大於" 現在時間才切回 LIVE，這樣才能觀看「當前這一個小時」的歷史數據
+            if (attemptDate > maxDate) {
                 switchToLive();
                 return;
             }
