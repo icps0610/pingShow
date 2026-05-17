@@ -1,8 +1,8 @@
 {
-    "port": 80,
-    "interval": 1,
+    "port": 8010,
+    "interval": 30,
     "ymax": 50,
-    "day_range": 14,
+    "day_range": 7,
     "month_range": 3,
     "timezone": "Asia/Taipei",
     "targets": [

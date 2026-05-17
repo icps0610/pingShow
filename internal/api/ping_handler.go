@@ -51,14 +51,14 @@ func HandleHistory(c *gin.Context) {
 
 func HandleRangeHistory(c *gin.Context) {
 	endDateStr := c.Query("end_date") // YYYYMMDD
-	mode := c.Query("mode")           // "week" or "month"
+	mode := c.Query("mode")           // "hour", "day_hour", "day" or "month"
 
 	if endDateStr == "" || mode == "" {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "缺少參數"})
 		return
 	}
 
-	endDate, err := time.Parse("20060102", endDateStr)
+	endDate, err := time.ParseInLocation("20060102", endDateStr, models.SystemLocation)
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "日期格式錯誤"})
 		return
@@ -66,7 +66,18 @@ func HandleRangeHistory(c *gin.Context) {
 
 	var results []models.LogEntry
 
-	if mode == "day" {
+	if mode == "day_hour" {
+		for h := 0; h < 24; h++ {
+			targetTime := time.Date(endDate.Year(), endDate.Month(), endDate.Day(), h, 0, 0, 0, models.SystemLocation)
+			avgMetrics := calculateHourAverage(targetTime)
+			if avgMetrics != nil {
+				results = append(results, models.LogEntry{
+					Timestamp: targetTime.Format("15點"),
+					Metrics:   avgMetrics,
+				})
+			}
+		}
+	} else if mode == "day" {
 		// 依照設定檔的 DayRange，每天一個點
 		for i := models.SystemDayRange - 1; i >= 0; i-- {
 			targetDate := endDate.AddDate(0, 0, -i)
@@ -85,12 +96,12 @@ func HandleRangeHistory(c *gin.Context) {
 			targetMonth := endDate.AddDate(0, -i, 0)
 			monthStart := time.Date(targetMonth.Year(), targetMonth.Month(), 1, 0, 0, 0, 0, targetMonth.Location())
 			monthEnd := monthStart.AddDate(0, 1, -1)
-			
+
 			// 如果是當月，算到選擇的 endDate 為止
 			if i == 0 {
 				monthEnd = endDate
 			}
-			
+
 			avgMetrics := calculateRangeAverage(monthStart, monthEnd)
 			if avgMetrics != nil {
 				results = append(results, models.LogEntry{
@@ -102,6 +113,65 @@ func HandleRangeHistory(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusOK, results)
+}
+
+func calculateHourAverage(t time.Time) map[string]int64 {
+	dateStr := t.Format("20060102")
+	hourStr := t.Format("15")
+	fileName := fmt.Sprintf("log_%s_%s.json", dateStr, hourStr)
+	filePath := filepath.Join(models.AppDir, "logs", fileName)
+
+	file, err := os.Open(filePath)
+	if err != nil {
+		return nil
+	}
+	defer file.Close()
+
+	var sums = make(map[string]int64)
+	var counts = make(map[string]int64)
+	var keys []string
+
+	models.DataMutex.Lock()
+	for _, target := range models.Targets {
+		keys = append(keys, target.ID)
+		sums[target.ID] = 0
+		counts[target.ID] = 0
+	}
+	models.DataMutex.Unlock()
+
+	scanner := bufio.NewScanner(file)
+	for scanner.Scan() {
+		var entry models.LogEntry
+		if err := json.Unmarshal(scanner.Bytes(), &entry); err == nil {
+			for _, id := range keys {
+				val, ok := entry.Metrics[id]
+				if !ok {
+					continue
+				}
+				if val == -1 {
+					continue
+				}
+				sums[id] += val
+				counts[id]++
+			}
+		}
+	}
+
+	result := make(map[string]int64)
+	valid := false
+	for _, id := range keys {
+		if counts[id] > 0 {
+			result[id] = sums[id] / counts[id]
+			valid = true
+		} else {
+			result[id] = 0
+		}
+	}
+
+	if !valid {
+		return nil
+	}
+	return result
 }
 
 func calculateDayAverage(date time.Time) map[string]int64 {
@@ -170,4 +240,3 @@ func calculateRangeAverage(start, end time.Time) map[string]int64 {
 
 	return result
 }
-

@@ -42,7 +42,31 @@
             margin-bottom: 0.25rem;
             display: flex;
             align-items: center;
-            gap: 0.5rem;
+            justify-content: space-between;
+            gap: 0.75rem;
+            flex-wrap: nowrap;
+            /* PC 介面絕不折行，始終保持精緻單行 */
+        }
+
+        #query-date {
+            width: 135px;
+            box-sizing: border-box;
+        }
+
+        #query-hour {
+            width: 75px;
+            box-sizing: border-box;
+        }
+
+        #aggregate-mode {
+            width: 110px;
+            box-sizing: border-box;
+        }
+
+        .panel-left {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
             flex-wrap: wrap;
         }
 
@@ -88,7 +112,6 @@
         }
 
         .mode-group {
-            margin-left: auto;
             display: flex;
             align-items: center;
             gap: 0.5rem;
@@ -219,6 +242,14 @@
             .control-panel {
                 justify-content: center;
                 gap: 0.75rem;
+                flex-wrap: wrap;
+                /* 手機端寬度不足，允許折行 */
+            }
+
+            #query-date {
+                width: 100%;
+                /* 手機端拉寬或自適應 */
+                max-width: 150px;
             }
 
             .panel-group {
@@ -226,8 +257,12 @@
                 width: 100%;
             }
 
+            .panel-left {
+                width: 100%;
+                justify-content: center;
+            }
+
             .mode-group {
-                margin-left: 0;
                 width: 100%;
                 justify-content: center;
             }
@@ -248,25 +283,24 @@
 <body>
 
     <div class="control-panel">
-        <div class="panel-group">
-            <label>區間:</label>
-            <button onclick="loadRange('day')" style="background: #8b5cf6;">日平均</button>
-            <button onclick="loadRange('month')" style="background: #8b5cf6;">月平均</button>
-        </div>
-        <span class="panel-divider" style="color: var(--border)">|</span>
-        <div class="panel-group">
-            <label>歷史:</label>
-            <input type="date" id="query-date">
-            <select id="query-hour"></select>
-            <select id="aggregate-mode" onchange="if(!isLiveMode) loadHistory()">
-                <option value="1m" selected>平均一分鐘</option>
-                <option value="10m">平均十分鐘</option>
-                <option value="raw">原數據</option>
-            </select>
-            <button onclick="loadHistory()">載入</button>
+        <div class="panel-left">
+            <div class="panel-group">
+                <label>歷史回放:</label>
+                <input type="date" id="query-date">
+                <select id="query-hour"></select>
+                <select id="aggregate-mode" onchange="if(!isLiveMode) loadHistory()">
+                    <option value="1m" selected>平均一分鐘</option>
+                    <option value="10m">平均十分鐘</option>
+                    <option value="raw">原數據</option>
+                </select>
+                <button onclick="loadHistory()">載入</button>
+            </div>
         </div>
         <div class="mode-group">
-            <button id="btn-settings" onclick="openSettingsModal()" style="background: #475569; font-weight: bold;">⚙️ 設定</button>
+            <button id="btn-range" onclick="openRangeModal()" style="background: #8b5cf6; font-weight: bold;">📊
+                區間統計</button>
+            <button id="btn-settings" onclick="openSettingsModal()" style="background: #475569; font-weight: bold;">⚙️
+                設定</button>
             <button id="btn-live" onclick="switchToLive()" style="background: #10b981; display: none;">切回即時</button>
             <div id="current-mode" class="mode-status mode-live">● LIVE 即時監控中</div>
         </div>
@@ -317,6 +351,7 @@
             }
         });
         let isLiveMode = true;
+        let currentRangeMode = '';
         let liveInterval = null;
 
         const hourSelect = document.getElementById('query-hour');
@@ -400,6 +435,7 @@
             if (!dateInput) return;
 
             isLiveMode = false;
+            currentRangeMode = '';
             clearInterval(liveInterval);
             const btnLive = document.getElementById('btn-live');
             if (btnLive) btnLive.style.display = 'inline-block';
@@ -455,7 +491,8 @@
 
                     const modeBadge = document.getElementById('current-mode');
                     modeBadge.className = 'mode-status mode-hist';
-                    modeBadge.innerText = '歷史回放: ' + dateInput + ' ' + hourInput + '點 (' + processedEntries.length + '筆數據)';
+                    const fmtDate = dateInput.substring(0, 4) + '-' + dateInput.substring(4, 6) + '-' + dateInput.substring(6, 8);
+                    modeBadge.innerText = '● 歷史: ' + fmtDate + ' ' + hourInput + '點 (' + processedEntries.length + '筆數據)';
 
                     const labels = processedEntries.map(e => e.timestamp);
                     const parsedMetrics = {};
@@ -514,7 +551,8 @@
                 .catch(err => {
                     const modeBadge = document.getElementById('current-mode');
                     modeBadge.className = 'mode-status mode-hist';
-                    modeBadge.innerText = `歷史回放: 讀取失敗 (${dateInput} ${hourInput}點)`;
+                    const fmtDate = dateInput.substring(0, 4) + '-' + dateInput.substring(4, 6) + '-' + dateInput.substring(6, 8);
+                    modeBadge.innerText = `● 歷史: 讀取失敗 (${fmtDate} ${hourInput}點)`;
 
                     // 清空圖表與數據面板，避免產生誤會
                     targetIDs.forEach(id => {
@@ -529,12 +567,13 @@
         function loadRange(mode) {
             const dateInput = document.getElementById('query-date').value.replace(/-/g, '');
             if (!dateInput) return;
+            const hourInput = document.getElementById('query-hour').value;
 
             const modeBadge = document.getElementById('current-mode');
             modeBadge.className = 'mode-status mode-hist';
             modeBadge.innerText = '讀取計算中... (這可能需要幾秒鐘)';
 
-            fetch('/api/history_range?end_date=' + dateInput + '&mode=' + mode)
+            fetch('/api/history_range?end_date=' + dateInput + '&end_hour=' + hourInput + '&mode=' + mode)
                 .then(res => {
                     if (!res.ok) throw new Error('讀取區間失敗');
                     return res.json();
@@ -542,13 +581,22 @@
                 .then(entries => {
                     if (!entries) entries = [];
                     isLiveMode = false;
+                    currentRangeMode = mode;
                     clearInterval(liveInterval);
 
                     const btnLive = document.getElementById('btn-live');
                     if (btnLive) btnLive.style.display = 'inline-block';
 
-                    let title = mode === 'day' ? '日平均 (過去{{ .DayRange }}天)' : '月平均 (過去{{ .MonthRange }}個月)';
-                    modeBadge.innerText = '區間總覽: ' + title;
+                    let title = '';
+                    if (mode === 'day_hour') {
+                        const fmtDate = dateInput.substring(0, 4) + '-' + dateInput.substring(4, 6) + '-' + dateInput.substring(6, 8);
+                        title = '● 單日每時: ' + fmtDate;
+                    } else if (mode === 'day') {
+                        title = '● 日平均 ({{ .DayRange }}天)';
+                    } else {
+                        title = '● 月平均 ({{ .MonthRange }}個月)';
+                    }
+                    modeBadge.innerText = title;
 
                     const labels = entries.map(e => e.timestamp);
                     const parsedMetrics = {};
@@ -587,6 +635,7 @@
         function switchToLive() {
             if (isLiveMode) return;
             isLiveMode = true;
+            currentRangeMode = '';
 
             const modeBadge = document.getElementById('current-mode');
             modeBadge.className = 'mode-status mode-live';
@@ -615,11 +664,46 @@
             if (e.target.tagName === 'INPUT' || e.target.tagName === 'SELECT') return;
 
             if (e.key === 'a' || e.key === 'A' || e.key === 'ArrowLeft') {
-                shiftHour(-1);
+                shiftTime(-1);
             } else if (e.key === 'd' || e.key === 'D' || e.key === 'ArrowRight') {
-                shiftHour(1);
+                shiftTime(1);
             }
         });
+
+        function shiftTime(delta) {
+            if (currentRangeMode === 'day_hour') {
+                shiftDay(delta);
+            } else if (currentRangeMode === 'day' || currentRangeMode === 'month') {
+                // 靜態趨勢區間不支援左右按鍵與手勢切換，避免意外跳轉
+                return;
+            } else {
+                shiftHour(delta);
+            }
+        }
+
+        function shiftDay(delta) {
+            const dateInput = document.getElementById('query-date');
+            if (!dateInput.value) return;
+
+            const dateParts = dateInput.value.split('-');
+            const currentDate = new Date(parseInt(dateParts[0], 10), parseInt(dateParts[1], 10) - 1, parseInt(dateParts[2], 10));
+            currentDate.setDate(currentDate.getDate() + delta);
+
+            // 防呆：不能超過當下的日期
+            const now = new Date();
+            const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+            if (currentDate > today) {
+                return;
+            }
+
+            const y = currentDate.getFullYear();
+            const m = String(currentDate.getMonth() + 1).padStart(2, '0');
+            const d = String(currentDate.getDate()).padStart(2, '0');
+
+            dateInput.value = `${y}-${m}-${d}`;
+
+            loadRange('day_hour');
+        }
 
         function shiftHour(delta) {
             if (isLiveMode && delta > 0) return; // 已經是即時監控，無法再往後切換
@@ -691,6 +775,8 @@
             if (target.tagName === 'INPUT' || target.tagName === 'SELECT' || target.tagName === 'BUTTON') return;
             const modal = document.getElementById('settings-modal');
             if (modal && modal.contains(target)) return;
+            const rangeModal = document.getElementById('range-modal');
+            if (rangeModal && rangeModal.contains(target)) return;
 
             const dx = touchendX - touchstartX;
             const dy = touchendY - touchstartY;
@@ -698,9 +784,9 @@
             // 確保水平滑動的距離明顯大於垂直滑動的距離 (避免跟上下滑動捲動頁面衝突)
             if (Math.abs(dx) > Math.abs(dy) * 1.5) {
                 if (dx < -50) {
-                    shiftHour(1); // 左滑，同 D，下一小時
+                    shiftTime(1); // 左滑，同 D，下一小時 / 後一天
                 } else if (dx > 50) {
-                    shiftHour(-1); // 右滑，同 A，上一小時
+                    shiftTime(-1); // 右滑，同 A，上一小時 / 前一天
                 }
             }
         }
@@ -720,6 +806,32 @@
         liveInterval = setInterval(updateLiveMetrics, 1000);
         updateLiveMetrics();
 
+        // 📊 區間統計視窗 JS 邏輯
+        function openRangeModal() {
+            // 自動將首頁當前選取的日期同步給 Modal 內的日期選擇器
+            const pageDate = document.getElementById('query-date').value;
+            if (pageDate) {
+                document.getElementById('range-modal-date').value = pageDate;
+            }
+            document.getElementById('range-modal').style.display = 'flex';
+        }
+
+        function closeRangeModal() {
+            document.getElementById('range-modal').style.display = 'none';
+        }
+
+        function submitRangeQuery(mode) {
+            const modalDate = document.getElementById('range-modal-date').value;
+            if (!modalDate) {
+                alert('請先選擇基準日期！');
+                return;
+            }
+            // 同步回首頁的 query-date
+            document.getElementById('query-date').value = modalDate;
+            closeRangeModal();
+            loadRange(mode);
+        }
+
         // ⚙️ 設定視窗 JS 邏輯
         function openSettingsModal() {
             fetch('/api/settings')
@@ -731,14 +843,14 @@
                     document.getElementById('settings-day-range').value = data.day_range;
                     document.getElementById('settings-month-range').value = data.month_range;
                     document.getElementById('settings-timezone').value = data.timezone || '';
-                    
+
                     const container = document.getElementById('settings-targets-list');
                     container.innerHTML = '';
-                    
+
                     data.targets.forEach(t => {
                         addSettingsTargetRow(t.name, t.ip);
                     });
-                    
+
                     document.getElementById('settings-modal').style.display = 'flex';
                 })
                 .catch(err => {
@@ -772,11 +884,11 @@
             const day_range = parseInt(document.getElementById('settings-day-range').value, 10) || 7;
             const month_range = parseInt(document.getElementById('settings-month-range').value, 10) || 3;
             const timezone = document.getElementById('settings-timezone').value.trim();
-            
+
             const targetRows = document.querySelectorAll('.settings-target-row');
             const targets = [];
             let valid = true;
-            
+
             targetRows.forEach(row => {
                 const name = row.querySelector('.target-name-input').value.trim();
                 const ip = row.querySelector('.target-ip-input').value.trim();
@@ -786,12 +898,12 @@
                     valid = false;
                 }
             });
-            
+
             if (!valid || targets.length === 0) {
                 alert('所有目標的 IP/網址 皆不能留空，且必須至少有一個監控目標！');
                 return;
             }
-            
+
             const payload = {
                 port: port,
                 interval: interval,
@@ -801,84 +913,184 @@
                 timezone: timezone,
                 targets: targets
             };
-            
+
             fetch('/api/settings', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(payload)
             })
-            .then(res => {
-                if (!res.ok) {
-                    return res.json().then(data => { throw new Error(data.error || '儲存失敗') });
-                }
-                return res.json();
-            })
-            .then(data => {
-                alert('設定儲存成功！' + (port !== {{ .Port }} ? '\n(注意：連接埠已修改，重啟程式後才會生效！)' : ''));
-                closeSettingsModal();
-                window.location.reload();
-            })
-            .catch(err => {
-                alert('儲存設定失敗: ' + err.message);
-            });
+                .then(res => {
+                    if (!res.ok) {
+                        return res.json().then(data => { throw new Error(data.error || '儲存失敗') });
+                    }
+                    return res.json();
+                })
+                .then(data => {
+                    alert('設定儲存成功！' + (port !== {{ .Port }} ?'\n(注意：連接埠已修改，重啟程式後才會生效！)' : ''));
+            closeSettingsModal();
+            window.location.reload();
+        })
+            .catch (err => {
+            alert('儲存設定失敗: ' + err.message);
+        });
         }
     </script>
 
     <!-- 設定視窗 Modal -->
-    <div id="settings-modal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(15, 23, 42, 0.85); backdrop-filter: blur(8px); z-index: 1000; justify-content: center; align-items: center;">
-        <div style="background: #1e293b; border: 1px solid #334155; border-radius: 12px; width: 90%; max-width: 500px; max-height: 85vh; display: flex; flex-direction: column; overflow: hidden; box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.5);">
-            <div style="padding: 1rem; border-bottom: 1px solid #334155; display: flex; justify-content: space-between; align-items: center; background: #0f172a;">
-                <h3 style="margin: 0; font-size: 1.2rem; color: #f8fafc; display: flex; align-items: center; gap: 0.5rem;">⚙️ 系統設定</h3>
-                <span onclick="closeSettingsModal()" style="cursor: pointer; font-size: 1.5rem; color: #94a3b8; line-height: 1;">&times;</span>
+    <div id="settings-modal"
+        style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(15, 23, 42, 0.85); backdrop-filter: blur(8px); z-index: 1000; justify-content: center; align-items: center;">
+        <div
+            style="background: #1e293b; border: 1px solid #334155; border-radius: 12px; width: 90%; max-width: 500px; max-height: 85vh; display: flex; flex-direction: column; overflow: hidden; box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.5);">
+            <div
+                style="padding: 1rem; border-bottom: 1px solid #334155; display: flex; justify-content: space-between; align-items: center; background: #0f172a;">
+                <h3
+                    style="margin: 0; font-size: 1.2rem; color: #f8fafc; display: flex; align-items: center; gap: 0.5rem;">
+                    ⚙️ 系統設定</h3>
+                <span onclick="closeSettingsModal()"
+                    style="cursor: pointer; font-size: 1.5rem; color: #94a3b8; line-height: 1;">&times;</span>
             </div>
             <div style="padding: 1.25rem; overflow-y: auto; flex: 1; display: flex; flex-direction: column; gap: 1rem;">
                 <div style="display: flex; gap: 0.75rem;">
                     <div style="flex: 1; display: flex; flex-direction: column; gap: 0.25rem;">
                         <label style="font-size: 0.85rem; color: #94a3b8;">Port (連接埠)</label>
-                        <input type="number" id="settings-port" style="background: #0f172a; border: 1px solid #334155; color: #f8fafc; padding: 0.5rem; border-radius: 6px; font-family: monospace;" placeholder="80">
+                        <input type="number" id="settings-port"
+                            style="background: #0f172a; border: 1px solid #334155; color: #f8fafc; padding: 0.5rem; border-radius: 6px; font-family: monospace;"
+                            placeholder="80">
                         <span style="font-size: 0.7rem; color: #ef4444;">* 修改此項需重新啟動</span>
                     </div>
                     <div style="flex: 1; display: flex; flex-direction: column; gap: 0.25rem;">
                         <label style="font-size: 0.85rem; color: #94a3b8;">Interval (Ping 間隔秒)</label>
-                        <input type="number" id="settings-interval" style="background: #0f172a; border: 1px solid #334155; color: #f8fafc; padding: 0.5rem; border-radius: 6px; font-family: monospace;" placeholder="1">
+                        <input type="number" id="settings-interval"
+                            style="background: #0f172a; border: 1px solid #334155; color: #f8fafc; padding: 0.5rem; border-radius: 6px; font-family: monospace;"
+                            placeholder="1">
                     </div>
                 </div>
                 <div style="display: flex; gap: 0.75rem;">
                     <div style="flex: 1; display: flex; flex-direction: column; gap: 0.25rem;">
                         <label style="font-size: 0.85rem; color: #94a3b8;">Y軸 最大預設值</label>
-                        <input type="number" id="settings-ymax" style="background: #0f172a; border: 1px solid #334155; color: #f8fafc; padding: 0.5rem; border-radius: 6px; font-family: monospace;" placeholder="50">
+                        <input type="number" id="settings-ymax"
+                            style="background: #0f172a; border: 1px solid #334155; color: #f8fafc; padding: 0.5rem; border-radius: 6px; font-family: monospace;"
+                            placeholder="50">
+                    </div>
+                    <div style="flex: 1; display: flex; flex-direction: column; gap: 0.25rem;">
+                        <label style="font-size: 0.85rem; color: #94a3b8;">時區 ( 留空則使用系統預設)</label>
+                        <input type="text" id="settings-timezone"
+                            style="background: #0f172a; border: 1px solid #334155; color: #f8fafc; padding: 0.5rem; border-radius: 6px; font-family: monospace;"
+                            placeholder="Asia/Taipei">
                     </div>
                 </div>
                 <div style="display: flex; gap: 0.75rem;">
                     <div style="flex: 1; display: flex; flex-direction: column; gap: 0.25rem;">
                         <label style="font-size: 0.85rem; color: #94a3b8;">日平均天數 (day_range)</label>
-                        <input type="number" id="settings-day-range" style="background: #0f172a; border: 1px solid #334155; color: #f8fafc; padding: 0.5rem; border-radius: 6px; font-family: monospace;" placeholder="7">
+                        <input type="number" id="settings-day-range"
+                            style="background: #0f172a; border: 1px solid #334155; color: #f8fafc; padding: 0.5rem; border-radius: 6px; font-family: monospace;"
+                            placeholder="7">
                     </div>
                     <div style="flex: 1; display: flex; flex-direction: column; gap: 0.25rem;">
                         <label style="font-size: 0.85rem; color: #94a3b8;">月平均月份 (month_range)</label>
-                        <input type="number" id="settings-month-range" style="background: #0f172a; border: 1px solid #334155; color: #f8fafc; padding: 0.5rem; border-radius: 6px; font-family: monospace;" placeholder="3">
+                        <input type="number" id="settings-month-range"
+                            style="background: #0f172a; border: 1px solid #334155; color: #f8fafc; padding: 0.5rem; border-radius: 6px; font-family: monospace;"
+                            placeholder="3">
                     </div>
                 </div>
-                <div style="display: flex; gap: 0.75rem;">
-                    <div style="flex: 1; display: flex; flex-direction: column; gap: 0.25rem;">
-                        <label style="font-size: 0.85rem; color: #94a3b8;">時區 (timezone, 留空則使用系統預設)</label>
-                        <input type="text" id="settings-timezone" style="background: #0f172a; border: 1px solid #334155; color: #f8fafc; padding: 0.5rem; border-radius: 6px; font-family: monospace;" placeholder="Asia/Taipei">
-                    </div>
-                </div>
-                
+
                 <div style="border-top: 1px dashed #334155; margin-top: 0.5rem; padding-top: 0.75rem;">
-                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem;">
+                    <div
+                        style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem;">
                         <label style="font-size: 0.9rem; font-weight: bold; color: #f8fafc;">🎯 監控目標列表</label>
-                        <button type="button" onclick="addSettingsTargetRow()" style="background: #10b981; color: white; border: none; padding: 0.25rem 0.5rem; border-radius: 4px; font-size: 0.8rem; cursor: pointer;">+ 新增目標</button>
+                        <button type="button" onclick="addSettingsTargetRow()"
+                            style="background: #10b981; color: white; border: none; padding: 0.25rem 0.5rem; border-radius: 4px; font-size: 0.8rem; cursor: pointer;">+
+                            新增目標</button>
                     </div>
-                    <div id="settings-targets-list" style="display: flex; flex-direction: column; gap: 0.5rem; max-height: 200px; overflow-y: auto; padding-right: 0.25rem;">
+                    <div id="settings-targets-list"
+                        style="display: flex; flex-direction: column; gap: 0.5rem; max-height: 200px; overflow-y: auto; padding-right: 0.25rem;">
                         <!-- 動態生成目標 row -->
                     </div>
                 </div>
             </div>
-            <div style="padding: 1rem; border-top: 1px solid #334155; display: flex; justify-content: flex-end; gap: 0.5rem; background: #0f172a;">
-                <button type="button" onclick="closeSettingsModal()" style="background: #475569; color: white; border: none; padding: 0.5rem 1rem; border-radius: 6px; font-weight: bold; cursor: pointer;">取消</button>
-                <button type="button" onclick="saveSettings()" style="background: #2563eb; color: white; border: none; padding: 0.5rem 1rem; border-radius: 6px; font-weight: bold; cursor: pointer;">儲存設定</button>
+            <div
+                style="padding: 1rem; border-top: 1px solid #334155; display: flex; justify-content: flex-end; gap: 0.5rem; background: #0f172a;">
+                <button type="button" onclick="closeSettingsModal()"
+                    style="background: #475569; color: white; border: none; padding: 0.5rem 1rem; border-radius: 6px; font-weight: bold; cursor: pointer;">取消</button>
+                <button type="button" onclick="saveSettings()"
+                    style="background: #2563eb; color: white; border: none; padding: 0.5rem 1rem; border-radius: 6px; font-weight: bold; cursor: pointer;">儲存設定</button>
+            </div>
+        </div>
+    </div>
+    <!-- 📊 區間統計視窗 Modal -->
+    <div id="range-modal"
+        style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(15, 23, 42, 0.85); backdrop-filter: blur(8px); z-index: 1000; justify-content: center; align-items: center;">
+        <div
+            style="background: #1e293b; border: 1px solid #334155; border-radius: 12px; width: 90%; max-width: 420px; display: flex; flex-direction: column; overflow: hidden; box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.5);">
+            <div
+                style="padding: 1rem; border-bottom: 1px solid #334155; display: flex; justify-content: space-between; align-items: center; background: #0f172a;">
+                <h3
+                    style="margin: 0; font-size: 1.2rem; color: #f8fafc; display: flex; align-items: center; gap: 0.5rem;">
+                    📊 歷史區間統計</h3>
+                <span onclick="closeRangeModal()"
+                    style="cursor: pointer; font-size: 1.5rem; color: #94a3b8; line-height: 1;">&times;</span>
+            </div>
+            <div style="padding: 1.25rem; display: flex; flex-direction: column; gap: 1.25rem;">
+                <div style="display: flex; flex-direction: column; gap: 0.35rem;">
+                    <label style="font-size: 0.85rem; color: #94a3b8; font-weight: 500;">📅 選擇基準日期</label>
+                    <input type="date" id="range-modal-date"
+                        style="background: #0f172a; border: 1px solid #334155; color: #f8fafc; padding: 0.6rem; border-radius: 6px; font-family: monospace; font-size: 0.95rem; width: 100%; box-sizing: border-box;">
+                </div>
+                <div style="display: flex; flex-direction: column; gap: 0.75rem;">
+                    <label style="font-size: 0.85rem; color: #94a3b8; font-weight: 500;">📈 選擇統計模式</label>
+
+                    <!-- 單日每時 -->
+                    <div onclick="submitRangeQuery('day_hour')"
+                        style="background: #0f172a; border: 1px solid #334155; border-radius: 8px; padding: 0.85rem; cursor: pointer; display: flex; align-items: center; justify-content: space-between; transition: all 0.2s; box-sizing: border-box;"
+                        onmouseover="this.style.borderColor='#8b5cf6'; this.style.background='#1e1b4b';"
+                        onmouseout="this.style.borderColor='#334155'; this.style.background='#0f172a';">
+                        <div style="flex: 1; min-width: 0; padding-right: 0.75rem;">
+                            <div style="font-weight: bold; color: #f8fafc; font-size: 0.95rem;">單日每時平均</div>
+                            <div style="font-size: 0.75rem; color: #64748b; margin-top: 0.2rem;">顯示所選日期當天 0~23
+                                小時的每小時平均趨勢</div>
+                        </div>
+                        <div
+                            style="background: #8b5cf6; color: white; border-radius: 6px; padding: 0.4rem 0.85rem; font-size: 0.85rem; font-weight: bold; flex-shrink: 0; white-space: nowrap; text-align: center;">
+                            載入</div>
+                    </div>
+
+                    <!-- 日平均 -->
+                    <div onclick="submitRangeQuery('day')"
+                        style="background: #0f172a; border: 1px solid #334155; border-radius: 8px; padding: 0.85rem; cursor: pointer; display: flex; align-items: center; justify-content: space-between; transition: all 0.2s; box-sizing: border-box;"
+                        onmouseover="this.style.borderColor='#8b5cf6'; this.style.background='#1e1b4b';"
+                        onmouseout="this.style.borderColor='#334155'; this.style.background='#0f172a';">
+                        <div style="flex: 1; min-width: 0; padding-right: 0.75rem;">
+                            <div style="font-weight: bold; color: #f8fafc; font-size: 0.95rem;">日平均趨勢 ({{ .DayRange }}天)
+                            </div>
+                            <div style="font-size: 0.75rem; color: #64748b; margin-top: 0.2rem;">以所選日期為基準，往前推算過去 {{
+                                .DayRange }} 天的每日平均</div>
+                        </div>
+                        <div
+                            style="background: #8b5cf6; color: white; border-radius: 6px; padding: 0.4rem 0.85rem; font-size: 0.85rem; font-weight: bold; flex-shrink: 0; white-space: nowrap; text-align: center;">
+                            載入</div>
+                    </div>
+
+                    <!-- 月平均 -->
+                    <div onclick="submitRangeQuery('month')"
+                        style="background: #0f172a; border: 1px solid #334155; border-radius: 8px; padding: 0.85rem; cursor: pointer; display: flex; align-items: center; justify-content: space-between; transition: all 0.2s; box-sizing: border-box;"
+                        onmouseover="this.style.borderColor='#8b5cf6'; this.style.background='#1e1b4b';"
+                        onmouseout="this.style.borderColor='#334155'; this.style.background='#0f172a';">
+                        <div style="flex: 1; min-width: 0; padding-right: 0.75rem;">
+                            <div style="font-weight: bold; color: #f8fafc; font-size: 0.95rem;">月平均趨勢 ({{ .MonthRange
+                                }}個月)</div>
+                            <div style="font-size: 0.75rem; color: #64748b; margin-top: 0.2rem;">以所選日期為基準，往前推算過去 {{
+                                .MonthRange }} 個月的每月平均</div>
+                        </div>
+                        <div
+                            style="background: #8b5cf6; color: white; border-radius: 6px; padding: 0.4rem 0.85rem; font-size: 0.85rem; font-weight: bold; flex-shrink: 0; white-space: nowrap; text-align: center;">
+                            載入</div>
+                    </div>
+                </div>
+            </div>
+            <div
+                style="padding: 1rem; border-top: 1px solid #334155; display: flex; justify-content: flex-end; background: #0f172a;">
+                <button type="button" onclick="closeRangeModal()"
+                    style="background: #475569; color: white; border: none; padding: 0.5rem 1rem; border-radius: 6px; font-weight: bold; cursor: pointer; font-size: 0.85rem;">關閉</button>
             </div>
         </div>
     </div>
