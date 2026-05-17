@@ -12,8 +12,9 @@ import (
 func main() {
 	appVersion := `1.0`
 	argsCount := 0
-	description := `PingShow 網路連線狀態即時監測系統 - 提供即時與歷史的 Ping 延遲圖表監控，極致輕量且支援背景執行。
-支援於 target.json 中自訂網頁連接埠(port)與監控目標(IP)。`
+	description := `PingShow: Real-time network status monitoring system.
+Provides live and historical ping latency charts in a lightweight, background-friendly dashboard.
+Customize the web server port and target IPs via target.json.`
 	useage := `Usage: pingShow`
 	{
 		cmdutils.Set(useage, description)
