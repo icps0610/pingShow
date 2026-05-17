@@ -31,9 +31,9 @@ func main() {
 	r := router.SetupRouter()
 
 	fmt.Println("網路連線狀態即時監測系統已啟動！歷史數據同步寫入 ./logs 夾")
-	fmt.Println("請開啟瀏覽器: http://localhost:80")
+	fmt.Printf("請開啟瀏覽器: http://localhost:%d\n", models.SystemPort)
 
-	if err := r.Run(":80"); err != nil {
+	if err := r.Run(fmt.Sprintf(":%d", models.SystemPort)); err != nil {
 		fmt.Printf("伺服器啟動失敗: %v\n", err)
 	}
 }

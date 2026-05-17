@@ -31,10 +31,16 @@ type LogEntry struct {
 	Metrics   map[string]int64 `json:"metrics"`
 }
 
+type TargetConfig struct {
+	Port    int           `json:"port"`
+	Targets []*TargetInfo `json:"targets"`
+}
+
 var (
-	Targets   = []*TargetInfo{}
-	DataMutex sync.Mutex
-	LogChan   = make(chan LogEntry, 100)
+	Targets    = []*TargetInfo{}
+	SystemPort = 80 // 預設使用 80 埠號
+	DataMutex  sync.Mutex
+	LogChan    = make(chan LogEntry, 100)
 )
 
 func generateIDFromIP(ip string) string {
@@ -53,30 +59,48 @@ func LoadTargets() error {
 	filename := "target.json"
 	var list []*TargetInfo
 
-	// 如果檔案不存在，則建立預設 targets 檔案
+	// 如果檔案不存在，則建立包含預設 port 與 targets 的設定檔
 	if _, err := os.Stat(filename); os.IsNotExist(err) {
-		defaultTargets := []*TargetInfo{
-			{Name: "本地", IP: "192.168.0.1"},
-			{Name: "台灣", IP: "168.95.1.1"},
-			{Name: "LINE", IP: "access.line.me"},
-			{Name: "美國", IP: "8.8.8.8"},
+		defaultConfig := TargetConfig{
+			Port: 80,
+			Targets: []*TargetInfo{
+				{Name: "local", IP: "192.168.0.1"},
+				{Name: "Taiwan", IP: "168.95.1.1"},
+				{Name: "Google", IP: "8.8.8.8"},
+			},
 		}
-		data, err := json.MarshalIndent(defaultTargets, "", "    ")
+		data, err := json.MarshalIndent(defaultConfig, "", "    ")
 		if err != nil {
 			return err
 		}
 		if err := ioutil.WriteFile(filename, data, 0644); err != nil {
 			return err
 		}
-		list = defaultTargets
+		list = defaultConfig.Targets
+		SystemPort = defaultConfig.Port
 	} else {
 		// 讀取 target.json
 		data, err := ioutil.ReadFile(filename)
 		if err != nil {
 			return err
 		}
-		if err := json.Unmarshal(data, &list); err != nil {
-			return err
+
+		// 優先嘗試解析為新的物件格式（包含 port 與 targets）
+		var config TargetConfig
+		if err := json.Unmarshal(data, &config); err == nil && len(config.Targets) > 0 {
+			if config.Port <= 0 {
+				config.Port = 80
+			}
+			SystemPort = config.Port
+			list = config.Targets
+		} else {
+			// 相容舊格式：若解析為物件失敗，則解析為原本的單純 targets 陣列
+			var rawList []*TargetInfo
+			if err := json.Unmarshal(data, &rawList); err != nil {
+				return err
+			}
+			SystemPort = 80 // 預設使用 80 埠號
+			list = rawList
 		}
 	}
 
