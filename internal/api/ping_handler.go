@@ -28,7 +28,7 @@ func HandleHistory(c *gin.Context) {
 	}
 
 	fileName := fmt.Sprintf("log_%s_%s.json", date, hour)
-	filePath := filepath.Join("logs", fileName)
+	filePath := filepath.Join(models.AppDir, "logs", fileName)
 
 	file, err := os.Open(filePath)
 	if err != nil {
@@ -125,7 +125,7 @@ func calculateRangeAverage(start, end time.Time) map[string]int64 {
 		dateStr := d.Format("20060102")
 		for h := 0; h < 24; h++ {
 			fileName := fmt.Sprintf("log_%s_%02d.json", dateStr, h)
-			filePath := filepath.Join("logs", fileName)
+			filePath := filepath.Join(models.AppDir, "logs", fileName)
 
 			file, err := os.Open(filePath)
 			if err != nil {

@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"io/ioutil"
 	"os"
+	"path/filepath"
 	"sync"
 )
 
@@ -40,10 +41,20 @@ var (
 	SystemPort = 80 // 預設使用 80 埠號
 	DataMutex  sync.Mutex
 	LogChan    = make(chan LogEntry, 100)
+	AppDir     string
 )
 
+func init() {
+	exe, err := os.Executable()
+	if err == nil {
+		AppDir = filepath.Dir(exe)
+	} else {
+		AppDir = "."
+	}
+}
+
 func LoadTargets() error {
-	filename := "target.json"
+	filename := filepath.Join(AppDir, "target.json")
 	var list []*TargetInfo
 
 	// 如果檔案不存在，則建立包含預設 port 與 targets 的設定檔

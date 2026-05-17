@@ -42,11 +42,12 @@ func StartSnapshotTicker() {
 }
 
 func StartLogWriter() {
-	_ = os.MkdirAll("logs", 0755)
+	logDir := filepath.Join(models.AppDir, "logs")
+	_ = os.MkdirAll(logDir, 0755)
 	for entry := range models.LogChan {
 		now := time.Now()
 		fileName := fmt.Sprintf("log_%s_%s.json", now.Format("20060102"), now.Format("15"))
-		filePath := filepath.Join("logs", fileName)
+		filePath := filepath.Join(logDir, fileName)
 
 		jsonData, err := json.Marshal(entry)
 		if err != nil {
