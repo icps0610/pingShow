@@ -281,10 +281,61 @@
                 gap: 0.25rem;
             }
         }
+
+        /* Toast 樣式 */
+        .toast-container {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            z-index: 9999;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+
+        .toast {
+            background: #1e293b;
+            border: 1px solid #3b82f6;
+            color: #f8fafc;
+            padding: 0.75rem 1.25rem;
+            border-radius: 8px;
+            font-size: 0.9rem;
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.3);
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            min-width: 250px;
+            max-width: 400px;
+            transform: translateX(120%);
+            transition: transform 0.3s cubic-bezier(0.68, -0.55, 0.27, 1.55), opacity 0.3s;
+            opacity: 0;
+            font-family: monospace;
+        }
+
+        .toast.show {
+            transform: translateX(0);
+            opacity: 1;
+        }
+
+        .toast.success {
+            border-color: #10b981;
+            background: #064e3b;
+        }
+
+        .toast.error {
+            border-color: #ef4444;
+            background: #7f1d1d;
+        }
+
+        .toast.info {
+            border-color: #3b82f6;
+            background: #1e3a8a;
+        }
     </style>
 </head>
 
 <body>
+    <div id="toast-container" class="toast-container"></div>
 
     <div class="control-panel">
         <div class="panel-left">
@@ -325,6 +376,47 @@
     </div>
 
     <script>
+        function showToast(message, type = 'info', duration = 3000) {
+            const container = document.getElementById('toast-container');
+            if (!container) return;
+
+            const toast = document.createElement('div');
+            toast.className = `toast ${type}`;
+            
+            let icon = 'ℹ️';
+            if (type === 'success') icon = '✅';
+            if (type === 'error') icon = '❌';
+
+            toast.innerHTML = `<span style="font-size: 1.1rem;">${icon}</span><div style="flex: 1; line-height: 1.4;">${message.replace(/\n/g, '<br>')}</div>`;
+            container.appendChild(toast);
+
+            // 觸發動畫
+            setTimeout(() => {
+                toast.classList.add('show');
+            }, 10);
+
+            // 自動消失
+            setTimeout(() => {
+                toast.classList.remove('show');
+                setTimeout(() => {
+                    toast.remove();
+                }, 300);
+            }, duration);
+        }
+
+        // 檢查是否有待顯示的設定儲存成功 Toast
+        window.addEventListener('DOMContentLoaded', () => {
+            const toastStatus = localStorage.getItem('settings_saved_toast');
+            if (toastStatus) {
+                localStorage.removeItem('settings_saved_toast');
+                if (toastStatus === 'port_changed') {
+                    showToast('設定儲存成功！\n(注意：連接埠已修改，重啟程式後才會生效！)', 'info', 5000);
+                } else if (toastStatus === 'success') {
+                    showToast('設定儲存成功！', 'success', 3000);
+                }
+            }
+        });
+
         const charts = {};
         const palette = ['#4ade80', '#fbbf24', '#22d3ee', '#f87171', '#a3e635', '#f472b6', '#38bdf8', '#c084fc'];
         const targetIDs = [{{ range .Targets }}"{{.ID}}", {{ end }}];
@@ -632,7 +724,7 @@
                 })
                 .catch(err => {
                     modeBadge.innerText = '讀取失敗';
-                    alert(err.message);
+                    showToast(err.message, 'error');
                 });
         }
 
@@ -827,7 +919,7 @@
         function submitRangeQuery(mode) {
             const modalDate = document.getElementById('range-modal-date').value;
             if (!modalDate) {
-                alert('請先選擇基準日期！');
+                showToast('請先選擇基準日期！', 'info');
                 return;
             }
             // 同步回首頁的 query-date
@@ -858,7 +950,7 @@
                     document.getElementById('settings-modal').style.display = 'flex';
                 })
                 .catch(err => {
-                    alert('無法取得設定: ' + err.message);
+                    showToast('無法取得設定: ' + err.message, 'error');
                 });
         }
 
@@ -904,7 +996,7 @@
             });
 
             if (!valid || targets.length === 0) {
-                alert('所有目標的 IP/網址 皆不能留空，且必須至少有一個監控目標！');
+                showToast('所有目標的 IP/網址 皆不能留空，且必須至少有一個監控目標！', 'error');
                 return;
             }
 
@@ -930,13 +1022,14 @@
                     return res.json();
                 })
                 .then(data => {
-                    alert('設定儲存成功！' + (port !== {{ .Port }} ?'\n(注意：連接埠已修改，重啟程式後才會生效！)' : ''));
-            closeSettingsModal();
-            window.location.reload();
-        })
-            .catch (err => {
-            alert('儲存設定失敗: ' + err.message);
-        });
+                    const isPortChanged = (port !== {{ .Port }});
+                    localStorage.setItem('settings_saved_toast', isPortChanged ? 'port_changed' : 'success');
+                    closeSettingsModal();
+                    window.location.reload();
+                })
+                .catch(err => {
+                    showToast('儲存設定失敗: ' + err.message, 'error');
+                });
         }
     </script>
 
