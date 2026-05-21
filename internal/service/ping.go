@@ -11,8 +11,8 @@ import (
 
 func StartPingWorker(t *models.TargetInfo) {
 	for {
-		if !models.IsTargetActive(t.IP) {
-			return // Target was deleted, stop worker
+		if !models.IsTargetActive(t.IP) || t.Disabled {
+			return // Target was deleted or disabled, stop worker
 		}
 		pinger, err := ping.NewPinger(t.IP)
 		if err != nil {

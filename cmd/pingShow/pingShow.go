@@ -40,7 +40,9 @@ Customize the web server port and target IPs via target.json.`
 		models.DataMutex.Unlock()
 
 		for _, t := range targetsToStart {
-			go service.StartPingWorker(t)
+			if !t.Disabled {
+				go service.StartPingWorker(t)
+			}
 		}
 		go service.StartSnapshotTicker()
 

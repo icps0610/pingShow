@@ -13,6 +13,7 @@ type TargetInfo struct {
 	ID       string  `json:"id,omitempty"`
 	Name     string  `json:"name"`
 	IP       string  `json:"ip"`
+	Disabled bool    `json:"disabled,omitempty"`
 	Last     int64   `json:"last"`
 	Min      int64   `json:"min"`
 	Max      int64   `json:"max"`
@@ -225,12 +226,14 @@ func SaveTargets() error {
 	
 	DataMutex.Lock()
 	cleanTargets := make([]struct {
-		Name string `json:"name"`
-		IP   string `json:"ip"`
+		Name     string `json:"name"`
+		IP       string `json:"ip"`
+		Disabled bool   `json:"disabled,omitempty"`
 	}, len(Targets))
 	for i, t := range Targets {
 		cleanTargets[i].Name = t.Name
 		cleanTargets[i].IP = t.IP
+		cleanTargets[i].Disabled = t.Disabled
 	}
 	
 	cleanConfig := struct {
@@ -241,8 +244,9 @@ func SaveTargets() error {
 		MonthRange int    `json:"month_range"`
 		Timezone   string `json:"timezone"`
 		Targets    []struct {
-			Name string `json:"name"`
-			IP   string `json:"ip"`
+			Name     string `json:"name"`
+			IP       string `json:"ip"`
+			Disabled bool   `json:"disabled,omitempty"`
 		} `json:"targets"`
 	}{
 		Port:       SystemPort,

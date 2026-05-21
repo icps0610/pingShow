@@ -31,7 +31,9 @@ func StartSnapshotTicker() {
 			Metrics:   make(map[string]int64),
 		}
 		for _, t := range models.Targets {
-			entry.Metrics[t.ID] = t.Last
+			if !t.Disabled {
+				entry.Metrics[t.ID] = t.Last
+			}
 		}
 		models.DataMutex.Unlock()
 

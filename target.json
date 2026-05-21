@@ -1,6 +1,6 @@
 {
     "port": 8010,
-    "interval": 30,
+    "interval": 1,
     "ymax": 50,
     "day_range": 7,
     "month_range": 3,

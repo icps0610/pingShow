@@ -38,84 +38,80 @@
             background: var(--card-bg);
             border: 1px solid var(--border);
             border-radius: 6px;
-            padding: 0.5rem 1rem;
+            padding: 0.5rem 0.6rem;
             margin-bottom: 0.25rem;
             display: flex;
-            align-items: center;
-            justify-content: space-between;
-            gap: 0.75rem;
-            flex-wrap: nowrap;
-            /* PC 介面絕不折行，始終保持精緻單行 */
-        }
-
-        #query-date {
-            width: 135px;
-            box-sizing: border-box;
-        }
-
-        #query-hour {
-            width: 75px;
-            box-sizing: border-box;
-        }
-
-        #aggregate-mode {
-            width: 110px;
-            box-sizing: border-box;
-        }
-
-        .panel-left {
-            display: flex;
-            align-items: center;
-            gap: 0.75rem;
             flex-wrap: wrap;
+            align-items: center;
+            gap: 0.75rem;
         }
 
         .panel-group {
             display: flex;
             align-items: center;
-            gap: 0.5rem;
-            flex-wrap: wrap;
+            gap: 0.4rem;
         }
 
-        .control-panel label {
-            font-size: 0.9rem;
+        .opt-group {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+        }
+
+        .opt-item {
+            display: flex;
+            align-items: center;
+            gap: 0.4rem;
+        }
+
+        .tool-group {
+            margin-left: auto;
+            display: flex;
+            gap: 0.4rem;
+        }
+
+        .toolbar-label {
             color: var(--muted);
+            font-size: 0.75rem;
+            font-weight: bold;
+            white-space: nowrap;
         }
 
         .control-panel input,
         .control-panel select,
         .control-panel button {
-            background: #0f172a;
+            background: #111827;
             border: 1px solid var(--border);
             color: var(--text);
-            padding: 0.25rem 0.5rem;
+            padding: 0.35rem 0.5rem;
             border-radius: 4px;
             font-size: 0.9rem;
+            box-sizing: border-box;
+            height: 32px;
         }
 
         .control-panel button {
-            background: #2563eb;
             cursor: pointer;
             border: none;
             font-weight: bold;
-            white-space: nowrap; /* 確保所有按鈕文字絕不折行 */
+            white-space: nowrap;
         }
 
-        .control-panel button:hover {
-            background: #1d4ed8;
-        }
+        .btn-load { background: #2563eb; }
+        .btn-load:hover { background: #1d4ed8; }
+        .btn-live { background: #10b981; }
+        .btn-live:hover { background: #059669; }
+        .btn-range { background: #8b5cf6; }
+        .btn-range:hover { background: #7c3aed; }
+        .btn-settings { background: #475569; }
+        .btn-settings:hover { background: #334155; }
 
         .mode-status {
             font-weight: bold;
-            font-size: 0.9rem;
-            padding: 0.25rem 0.5rem;
+            font-size: 0.8rem;
+            padding: 0.2rem 0.6rem;
             border-radius: 4px;
-        }
-
-        .mode-group {
-            display: flex;
-            align-items: center;
-            gap: 0.5rem;
+            white-space: nowrap;
         }
 
         .mode-live {
@@ -127,8 +123,6 @@
             background: rgba(245, 158, 11, 0.2);
             color: #f59e0b;
         }
-
-
 
         .grid {
             display: grid;
@@ -169,12 +163,9 @@
             border-top: 1px dashed var(--border);
         }
 
-
         .title {
             font-weight: bold;
         }
-
-
 
         .stats-items {
             display: flex;
@@ -182,12 +173,6 @@
             align-items: center;
             gap: 0.85rem;
             color: var(--muted);
-        }
-
-        .stats-row {
-            display: flex;
-            gap: 0.85rem;
-            justify-content: center;
         }
 
         .stats-items span {
@@ -208,78 +193,34 @@
             width: 100%;
         }
 
-        /* 手機版響應式設計 */
-        @media (max-width: 768px) {
-            body {
-                height: auto;
-                overflow: auto;
-            }
-
-            .grid {
-                grid-template-columns: 1fr;
-                grid-template-rows: auto;
-                grid-auto-flow: row;
-            }
-
-            .card {
-                min-height: 300px;
-            }
-
-            .header-strip {
-                font-size: 0.95rem;
-                flex-wrap: wrap;
-                gap: 0.5rem;
-            }
-
-            .footer-strip {
-                font-size: 1.1rem;
-                text-align: center;
-            }
-
-            .panel-divider {
-                display: none;
-            }
-
+        @media (max-width: 900px) {
             .control-panel {
-                justify-content: center;
-                gap: 0.75rem;
-                flex-wrap: wrap;
-                /* 手機端寬度不足，允許折行 */
-            }
-
-            #query-date {
-                width: 100%;
-                /* 手機端拉寬或自適應 */
-                max-width: 150px;
+                flex-direction: column;
+                align-items: stretch;
+                gap: 0.6rem;
+                padding: 0.6rem;
             }
 
             .panel-group {
-                justify-content: center;
                 width: 100%;
             }
-
-            .panel-left {
-                width: 100%;
-                justify-content: center;
+            
+            .toolbar-label {
+                width: 36px;
+                text-align: right;
+                flex-shrink: 0;
             }
 
-            .mode-group {
-                width: 100%;
-                justify-content: center;
-                flex-wrap: wrap; /* 手機端寬度不足時，允許按鈕與狀態欄自動折行 */
-                gap: 0.5rem;
-            }
+            .time-group input[type="date"] { flex: 2; min-width: 0; }
+            .time-group select { flex: 1; min-width: 0; }
+            .time-group button { flex-shrink: 0; }
 
-            #current-mode {
-                width: auto;
-                text-align: center;
-                white-space: nowrap; /* 確保狀態文字始終保持清爽單行，不被擠壓 */
-            }
+            .opt-group { gap: 0.5rem; }
+            .opt-item { flex: 1; min-width: 0; gap: 0.4rem; }
+            .opt-item select { width: 100%; }
 
-            .stats-items {
-                flex-direction: column;
-                gap: 0.25rem;
-            }
+            .tool-group { margin-left: 0; }
+            .tool-group button { flex: 1; }
         }
 
         /* Toast 樣式 */
@@ -331,6 +272,10 @@
             border-color: #3b82f6;
             background: #1e3a8a;
         }
+
+        .hidden {
+            display: none !important;
+        }
     </style>
 </head>
 
@@ -338,27 +283,39 @@
     <div id="toast-container" class="toast-container"></div>
 
     <div class="control-panel">
-        <div class="panel-left">
-            <div class="panel-group">
-                <label>歷史回放:</label>
-                <input type="date" id="query-date">
-                <select id="query-hour"></select>
+        <div class="panel-group time-group">
+            <span class="toolbar-label">時間</span>
+            <input type="date" id="query-date">
+            <select id="query-hour"></select>
+            <button class="btn-load" onclick="loadHistory()">載入</button>
+        </div>
+        <div class="panel-group opt-group">
+            <div class="opt-item">
+                <span class="toolbar-label">顯示</span>
                 <select id="aggregate-mode" onchange="if(!isLiveMode) loadHistory()">
-                    <option value="1m" selected>平均一分鐘</option>
-                    <option value="10m">平均十分鐘</option>
-                    <option value="raw">原數據</option>
+                    <option value="1m" selected>1 分鐘</option>
+                    <option value="raw">原始數據</option>
                 </select>
-                <button onclick="loadHistory()">載入</button>
+            </div>
+            <div class="opt-item">
+                <span class="toolbar-label">指標</span>
+                <select id="metric-select" onchange="setStatMode(this.value)">
+                    <option value="p95" selected>P95</option>
+                    <option value="avg">AVG</option>
+                    <option value="timeout">Timeout</option>
+                    <option value="jitter">Jitter</option>
+                </select>
             </div>
         </div>
-        <div class="mode-group">
-            <button id="btn-range" onclick="openRangeModal()" style="background: #8b5cf6; font-weight: bold;">📊
-                區間統計</button>
-            <button id="btn-settings" onclick="openSettingsModal()" style="background: #475569; font-weight: bold;">⚙️
-                設定</button>
-            <button id="btn-live" onclick="switchToLive()" style="background: #10b981; display: none;">切回即時</button>
-            <div id="current-mode" class="mode-status mode-live">● LIVE 即時監控中</div>
+        <div class="panel-group tool-group">
+            <button id="btn-live" class="btn-live hidden" onclick="switchToLive()">切回即時</button>
+            <button id="btn-range" class="btn-range" onclick="openRangeModal()">區間統計</button>
+            <button id="btn-settings" class="btn-settings" onclick="openSettingsModal()">設定</button>
         </div>
+    </div>
+
+    <div style="margin-bottom: 0.5rem; padding: 0.2rem 0; display: flex; justify-content: flex-end;">
+        <div id="current-mode" class="mode-status mode-live">● LIVE 即時監控中</div>
     </div>
 
     <div class="grid grid-count-{{ len .Targets }}">
@@ -449,6 +406,132 @@
         let isLiveMode = true;
         let currentRangeMode = '';
         let liveInterval = null;
+        let currentStatMode = 'p95';
+
+        function updateToolbarState() {
+            const optGroup = document.querySelector('.opt-group');
+            const queryHour = document.getElementById('query-hour');
+            const loadBtn = document.querySelector('.btn-load');
+            const btnLive = document.getElementById('btn-live');
+            
+            if (!optGroup) return;
+
+            // 重置所有 hidden 狀態
+            optGroup.classList.remove('hidden');
+            queryHour.classList.remove('hidden');
+            loadBtn.classList.remove('hidden');
+            if (btnLive) btnLive.classList.remove('hidden');
+
+            if (isLiveMode) {
+                // LIVE 即時監控模式
+                optGroup.classList.add('hidden');
+                if (btnLive) btnLive.classList.add('hidden');
+            } else {
+                // 歷史模式
+                if (currentRangeMode !== '') {
+                    // 區間模式：隱藏顯示群組、小時、載入
+                    optGroup.classList.add('hidden');
+                    queryHour.classList.add('hidden');
+                    loadBtn.classList.add('hidden');
+                }
+            }
+        }
+
+        function getStatMode() {
+            return currentStatMode;
+        }
+
+        function setStatMode(mode) {
+            currentStatMode = mode;
+            const select = document.getElementById('metric-select');
+            if (select && select.value !== mode) {
+                select.value = mode;
+            }
+            reloadCurrentView();
+        }
+
+        function getStatLabel() {
+            const labels = {
+                avg: 'AVG',
+                p95: 'P95',
+                timeout: 'Timeout',
+                jitter: 'Jitter'
+            };
+            return labels[getStatMode()] || getStatMode().toUpperCase();
+        }
+
+        function percentile(values, p) {
+            if (!values.length) return null;
+            const sorted = [...values].sort((a, b) => a - b);
+            const idx = Math.min(sorted.length - 1, Math.floor(sorted.length * p));
+            return sorted[idx];
+        }
+
+        function calculateJitter(rawValues) {
+            let last = null;
+            let sum = 0;
+            let count = 0;
+            rawValues.forEach(val => {
+                if (val === undefined || val === -1 || val === null) return;
+                if (last !== null) {
+                    sum += Math.abs(val - last);
+                    count++;
+                }
+                last = val;
+            });
+            return count > 0 ? Math.round(sum / count) : 0;
+        }
+
+        function aggregateValues(sample) {
+            const mode = getStatMode();
+            if (mode === 'timeout') {
+                if (!sample.raw.length) return null;
+                const timeouts = sample.raw.filter(v => v === -1).length;
+                return Math.round((timeouts / sample.raw.length) * 100);
+            }
+            if (mode === 'jitter') {
+                return sample.raw.length ? calculateJitter(sample.raw) : null;
+            }
+            if (!sample.valid.length) return null;
+            if (mode === 'p95') return percentile(sample.valid, 0.95);
+            const sum = sample.valid.reduce((a, b) => a + b, 0);
+            return Math.round(sum / sample.valid.length);
+        }
+
+        function transformRawEntries(entries) {
+            const mode = getStatMode();
+            if (mode !== 'timeout' && mode !== 'jitter') return entries;
+
+            const lastValid = {};
+            targetIDs.forEach(id => lastValid[id] = null);
+
+            return entries.map(e => {
+                const metrics = {};
+                targetIDs.forEach(id => {
+                    const val = e.metrics[id];
+                    if (mode === 'timeout') {
+                        metrics[id] = val === -1 ? 100 : 0;
+                        return;
+                    }
+                    if (val === undefined || val === -1) {
+                        metrics[id] = null;
+                        return;
+                    }
+                    metrics[id] = lastValid[id] === null ? 0 : Math.abs(val - lastValid[id]);
+                    lastValid[id] = val;
+                });
+                return { timestamp: e.timestamp, metrics: metrics };
+            });
+        }
+
+        function reloadCurrentView() {
+            if (isLiveMode) return;
+            if (currentRangeMode) {
+                loadRange(currentRangeMode);
+            } else {
+                loadHistory();
+            }
+        }
 
         const hourSelect = document.getElementById('query-hour');
         for (let i = 0; i < 24; i++) {
@@ -535,6 +618,7 @@
             clearInterval(liveInterval);
             const btnLive = document.getElementById('btn-live');
             if (btnLive) btnLive.style.display = 'inline-block';
+            updateToolbarState();
 
             fetch('/api/history?date=' + dateInput + '&hour=' + hourInput)
                 .then(res => {
@@ -548,39 +632,36 @@
                     let processedEntries = [];
 
                     if (aggMode === 'raw') {
-                        processedEntries = entries;
+                        processedEntries = transformRawEntries(entries);
                     } else {
-                        // 依照 1m 或 10m 進行分組平均
+                        // 依照 1m 進行分組，並套用 AVG / P95 統計模式
                         const grouped = {};
                         entries.forEach(e => {
                             let prefix = '';
                             if (aggMode === '1m') {
                                 prefix = e.timestamp.substring(0, 5); // "15:04"
-                            } else if (aggMode === '10m') {
-                                prefix = e.timestamp.substring(0, 4) + '0'; // "15:00"
                             }
                             if (!grouped[prefix]) {
                                 grouped[prefix] = { metrics: {} };
-                                targetIDs.forEach(id => grouped[prefix].metrics[id] = { sum: 0, valid: 0 });
+                                targetIDs.forEach(id => grouped[prefix].metrics[id] = { raw: [], valid: [] });
                             }
                             targetIDs.forEach(id => {
                                 let val = e.metrics[id];
-                                if (val !== undefined && val !== -1) {
-                                    grouped[prefix].metrics[id].sum += val;
-                                    grouped[prefix].metrics[id].valid++;
+                                if (val !== undefined) {
+                                    grouped[prefix].metrics[id].raw.push(val);
+                                    if (val !== -1) grouped[prefix].metrics[id].valid.push(val);
                                 }
                             });
                         });
 
                         for (let prefix in grouped) {
-                            let avgMetrics = {};
+                            let metrics = {};
                             targetIDs.forEach(id => {
-                                let g = grouped[prefix].metrics[id];
-                                avgMetrics[id] = g.valid > 0 ? Math.round(g.sum / g.valid) : null;
+                                metrics[id] = aggregateValues(grouped[prefix].metrics[id]);
                             });
                             processedEntries.push({
                                 timestamp: prefix,
-                                metrics: avgMetrics
+                                metrics: metrics
                             });
                         }
                     }
@@ -588,7 +669,7 @@
                     const modeBadge = document.getElementById('current-mode');
                     modeBadge.className = 'mode-status mode-hist';
                     const fmtDate = dateInput.substring(0, 4) + '-' + dateInput.substring(4, 6) + '-' + dateInput.substring(6, 8);
-                    modeBadge.innerText = '● 歷史: ' + fmtDate + ' ' + hourInput + '點 (' + processedEntries.length + '筆數據)';
+                    modeBadge.innerText = '● 歷史: ' + fmtDate + ' ' + hourInput + '點 / ' + getStatLabel() + ' (' + processedEntries.length + '筆)';
 
                     const labels = processedEntries.map(e => e.timestamp);
                     const parsedMetrics = {};
@@ -669,7 +750,7 @@
             modeBadge.className = 'mode-status mode-hist';
             modeBadge.innerText = '讀取計算中... (這可能需要幾秒鐘)';
 
-            fetch('/api/history_range?end_date=' + dateInput + '&end_hour=' + hourInput + '&mode=' + mode)
+            fetch('/api/history_range?end_date=' + dateInput + '&end_hour=' + hourInput + '&mode=' + mode + '&stat=' + getStatMode())
                 .then(res => {
                     if (!res.ok) throw new Error('讀取區間失敗');
                     return res.json();
@@ -682,15 +763,16 @@
 
                     const btnLive = document.getElementById('btn-live');
                     if (btnLive) btnLive.style.display = 'inline-block';
+                    updateToolbarState();
 
                     let title = '';
                     if (mode === 'day_hour') {
                         const fmtDate = dateInput.substring(0, 4) + '-' + dateInput.substring(4, 6) + '-' + dateInput.substring(6, 8);
-                        title = '● 單日每時: ' + fmtDate;
+                        title = '● 單日每時 ' + getStatLabel() + ': ' + fmtDate;
                     } else if (mode === 'day') {
-                        title = '● 日平均 ({{ .DayRange }}天)';
+                        title = '● 日' + getStatLabel() + ' ({{ .DayRange }}天)';
                     } else {
-                        title = '● 月平均 ({{ .MonthRange }}個月)';
+                        title = '● 月' + getStatLabel() + ' ({{ .MonthRange }}個月)';
                     }
                     modeBadge.innerText = title;
 
@@ -752,6 +834,7 @@
 
             liveInterval = setInterval(updateLiveMetrics, 1000);
             updateLiveMetrics();
+            updateToolbarState();
         }
 
         // 鍵盤 A / D 或 左右方向鍵 切換時段
@@ -901,6 +984,7 @@
         initCharts();
         liveInterval = setInterval(updateLiveMetrics, 1000);
         updateLiveMetrics();
+        updateToolbarState();
 
         // 📊 區間統計視窗 JS 邏輯
         function openRangeModal() {
@@ -944,7 +1028,7 @@
                     container.innerHTML = '';
 
                     data.targets.forEach(t => {
-                        addSettingsTargetRow(t.name, t.ip);
+                        addSettingsTargetRow(t.name, t.ip, t.disabled);
                     });
 
                     document.getElementById('settings-modal').style.display = 'flex';
@@ -958,7 +1042,7 @@
             document.getElementById('settings-modal').style.display = 'none';
         }
 
-        function addSettingsTargetRow(name = '', ip = '') {
+        function addSettingsTargetRow(name = '', ip = '', disabled = false) {
             const container = document.getElementById('settings-targets-list');
             const row = document.createElement('div');
             row.className = 'settings-target-row';
@@ -966,6 +1050,7 @@
             row.style.gap = '0.5rem';
             row.style.alignItems = 'center';
             row.innerHTML = `
+                <input type="checkbox" class="target-enabled-checkbox" ${!disabled ? 'checked' : ''} style="width: 16px; height: 16px; cursor: pointer;" title="啟用/停用此監控目標">
                 <input type="text" placeholder="名稱 (e.g. Google)" value="${name}" class="target-name-input" style="flex: 1; background: #0f172a; border: 1px solid #334155; color: #f8fafc; padding: 0.35rem; border-radius: 4px; font-size: 0.85rem; font-family: monospace;">
                 <input type="text" placeholder="IP/網址 (e.g. 8.8.8.8)" value="${ip}" class="target-ip-input" style="flex: 1.5; background: #0f172a; border: 1px solid #334155; color: #f8fafc; padding: 0.35rem; border-radius: 4px; font-size: 0.85rem; font-family: monospace;">
                 <button type="button" onclick="this.parentElement.remove()" style="background: #ef4444; color: white; border: none; padding: 0.35rem 0.5rem; border-radius: 4px; font-size: 0.85rem; cursor: pointer; font-weight: bold;">&times;</button>
@@ -988,8 +1073,9 @@
             targetRows.forEach(row => {
                 const name = row.querySelector('.target-name-input').value.trim();
                 const ip = row.querySelector('.target-ip-input').value.trim();
+                const enabled = row.querySelector('.target-enabled-checkbox').checked;
                 if (ip) {
-                    targets.push({ name: name || ip, ip: ip });
+                    targets.push({ name: name || ip, ip: ip, disabled: !enabled });
                 } else {
                     valid = false;
                 }
@@ -1142,9 +1228,9 @@
                         onmouseover="this.style.borderColor='#8b5cf6'; this.style.background='#1e1b4b';"
                         onmouseout="this.style.borderColor='#334155'; this.style.background='#0f172a';">
                         <div style="flex: 1; min-width: 0; padding-right: 0.75rem;">
-                            <div style="font-weight: bold; color: #f8fafc; font-size: 0.95rem;">單日每時平均</div>
-                            <div style="font-size: 0.75rem; color: #64748b; margin-top: 0.2rem;">顯示所選日期當天 0~23
-                                小時的每小時平均趨勢</div>
+                            <div style="font-weight: bold; color: #f8fafc; font-size: 0.95rem;">單日每時趨勢</div>
+                            <div style="font-size: 0.75rem; color: #64748b; margin-top: 0.2rem;">依上方 AVG / P95 顯示所選日期當天 0~23
+                                小時的趨勢</div>
                         </div>
                         <div
                             style="background: #8b5cf6; color: white; border-radius: 6px; padding: 0.4rem 0.85rem; font-size: 0.85rem; font-weight: bold; flex-shrink: 0; white-space: nowrap; text-align: center;">
@@ -1157,10 +1243,10 @@
                         onmouseover="this.style.borderColor='#8b5cf6'; this.style.background='#1e1b4b';"
                         onmouseout="this.style.borderColor='#334155'; this.style.background='#0f172a';">
                         <div style="flex: 1; min-width: 0; padding-right: 0.75rem;">
-                            <div style="font-weight: bold; color: #f8fafc; font-size: 0.95rem;">日平均趨勢 ({{ .DayRange }}天)
+                            <div style="font-weight: bold; color: #f8fafc; font-size: 0.95rem;">日趨勢 ({{ .DayRange }}天)
                             </div>
-                            <div style="font-size: 0.75rem; color: #64748b; margin-top: 0.2rem;">以所選日期為基準，往前推算過去 {{
-                                .DayRange }} 天的每日平均</div>
+                            <div style="font-size: 0.75rem; color: #64748b; margin-top: 0.2rem;">依上方 AVG / P95，以所選日期為基準，往前推算過去 {{
+                                .DayRange }} 天</div>
                         </div>
                         <div
                             style="background: #8b5cf6; color: white; border-radius: 6px; padding: 0.4rem 0.85rem; font-size: 0.85rem; font-weight: bold; flex-shrink: 0; white-space: nowrap; text-align: center;">
@@ -1173,10 +1259,10 @@
                         onmouseover="this.style.borderColor='#8b5cf6'; this.style.background='#1e1b4b';"
                         onmouseout="this.style.borderColor='#334155'; this.style.background='#0f172a';">
                         <div style="flex: 1; min-width: 0; padding-right: 0.75rem;">
-                            <div style="font-weight: bold; color: #f8fafc; font-size: 0.95rem;">月平均趨勢 ({{ .MonthRange
+                            <div style="font-weight: bold; color: #f8fafc; font-size: 0.95rem;">月趨勢 ({{ .MonthRange
                                 }}個月)</div>
-                            <div style="font-size: 0.75rem; color: #64748b; margin-top: 0.2rem;">以所選日期為基準，往前推算過去 {{
-                                .MonthRange }} 個月的每月平均</div>
+                            <div style="font-size: 0.75rem; color: #64748b; margin-top: 0.2rem;">依上方 AVG / P95，以所選日期為基準，往前推算過去 {{
+                                .MonthRange }} 個月</div>
                         </div>
                         <div
                             style="background: #8b5cf6; color: white; border-radius: 6px; padding: 0.4rem 0.85rem; font-size: 0.85rem; font-weight: bold; flex-shrink: 0; white-space: nowrap; text-align: center;">

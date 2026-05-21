@@ -8,8 +8,17 @@ import (
 )
 
 func HandleIndex(c *gin.Context) {
+	models.DataMutex.Lock()
+	var activeTargets []*models.TargetInfo
+	for _, t := range models.Targets {
+		if !t.Disabled {
+			activeTargets = append(activeTargets, t)
+		}
+	}
+	models.DataMutex.Unlock()
+
 	c.HTML(http.StatusOK, "index.html", gin.H{
-		"Targets":    models.Targets,
+		"Targets":    activeTargets,
 		"YMax":       models.SystemYMax,
 		"DayRange":   models.SystemDayRange,
 		"MonthRange": models.SystemMonthRange,

@@ -10,8 +10,9 @@ import (
 )
 
 type TargetInput struct {
-	Name string `json:"name"`
-	IP   string `json:"ip"`
+	Name     string `json:"name"`
+	IP       string `json:"ip"`
+	Disabled bool   `json:"disabled"`
 }
 
 type SettingsInput struct {
@@ -30,7 +31,7 @@ func HandleGetSettings(c *gin.Context) {
 
 	targets := []TargetInput{}
 	for _, t := range models.Targets {
-		targets = append(targets, TargetInput{Name: t.Name, IP: t.IP})
+		targets = append(targets, TargetInput{Name: t.Name, IP: t.IP, Disabled: t.Disabled})
 	}
 
 	c.JSON(http.StatusOK, SettingsInput{
@@ -115,19 +116,29 @@ func HandleSaveSettings(c *gin.Context) {
 		seenIP[inputT.IP] = true
 
 		if oldT, ok := oldTargetsMap[inputT.IP]; ok {
-			// 保留的原有目標，僅更新名稱
+			// 保留的原有目標，更新名稱與啟用狀態
+			wasDisabled := oldT.Disabled
 			oldT.Name = inputT.Name
+			oldT.Disabled = inputT.Disabled
 			newTargets = append(newTargets, oldT)
+			
+			// 如果之前是停用，現在被啟用，需要啟動 ping worker
+			if wasDisabled && !oldT.Disabled {
+				newWorkers = append(newWorkers, oldT)
+			}
 		} else {
 			// 新增目標
 			newT := &models.TargetInfo{
-				ID:   inputT.IP,
-				Name: inputT.Name,
-				IP:   inputT.IP,
-				Min:  9999,
+				ID:       inputT.IP,
+				Name:     inputT.Name,
+				IP:       inputT.IP,
+				Min:      9999,
+				Disabled: inputT.Disabled,
 			}
 			newTargets = append(newTargets, newT)
-			newWorkers = append(newWorkers, newT) // 記下要啟動 worker
+			if !newT.Disabled {
+				newWorkers = append(newWorkers, newT) // 記下要啟動 worker
+			}
 		}
 	}
 
