@@ -302,7 +302,7 @@
                 <select id="metric-select" onchange="setStatMode(this.value)">
                     <option value="p95" selected>P95</option>
                     <option value="avg">AVG</option>
-                    <option value="timeout">Timeout</option>
+                    <option value="timeout">Timeout (%)</option>
                     <option value="jitter">Jitter</option>
                 </select>
             </div>
@@ -361,7 +361,7 @@
             }, duration);
         }
 
-        // 檢查是否有待顯示的設定儲存成功 Toast
+        // 檢查是否有待顯示的設定儲存成功 Toast 與狀態還原
         window.addEventListener('DOMContentLoaded', () => {
             const toastStatus = localStorage.getItem('settings_saved_toast');
             if (toastStatus) {
@@ -371,6 +371,40 @@
                 } else if (toastStatus === 'success') {
                     showToast('設定儲存成功！', 'success', 3000);
                 }
+            }
+
+            // 嘗試還原設定儲存前的頁面狀態
+            const savedIsLive = localStorage.getItem('saved_state_isLive');
+            if (savedIsLive !== null) {
+                const isLive = savedIsLive === 'true';
+                const rangeMode = localStorage.getItem('saved_state_rangeMode') || '';
+                const qDate = localStorage.getItem('saved_state_queryDate');
+                const qHour = localStorage.getItem('saved_state_queryHour');
+                const metric = localStorage.getItem('saved_state_metric');
+                const agg = localStorage.getItem('saved_state_agg');
+
+                if (metric) document.getElementById('metric-select').value = metric;
+                if (agg) document.getElementById('aggregate-mode').value = agg;
+                if (qDate) document.getElementById('query-date').value = qDate;
+                if (qHour) document.getElementById('query-hour').value = qHour;
+
+                // 清除暫存狀態
+                localStorage.removeItem('saved_state_isLive');
+                localStorage.removeItem('saved_state_rangeMode');
+                localStorage.removeItem('saved_state_queryDate');
+                localStorage.removeItem('saved_state_queryHour');
+                localStorage.removeItem('saved_state_metric');
+                localStorage.removeItem('saved_state_agg');
+
+                if (isLive) {
+                    switchToLive();
+                } else if (rangeMode !== '') {
+                    loadRange(rangeMode);
+                } else {
+                    loadHistory();
+                }
+            } else {
+                switchToLive();
             }
         });
 
@@ -410,6 +444,9 @@
 
         function updateToolbarState() {
             const optGroup = document.querySelector('.opt-group');
+            const timeGroup = document.querySelector('.time-group');
+            const aggregateItem = document.getElementById('aggregate-mode').closest('.opt-item');
+            const metricItem = document.getElementById('metric-select').closest('.opt-item');
             const queryHour = document.getElementById('query-hour');
             const loadBtn = document.querySelector('.btn-load');
             const btnLive = document.getElementById('btn-live');
@@ -418,6 +455,9 @@
 
             // 重置所有 hidden 狀態
             optGroup.classList.remove('hidden');
+            timeGroup.classList.remove('hidden');
+            aggregateItem.classList.remove('hidden');
+            metricItem.classList.remove('hidden');
             queryHour.classList.remove('hidden');
             loadBtn.classList.remove('hidden');
             if (btnLive) btnLive.classList.remove('hidden');
@@ -429,10 +469,14 @@
             } else {
                 // 歷史模式
                 if (currentRangeMode !== '') {
-                    // 區間模式：隱藏顯示群組、小時、載入
-                    optGroup.classList.add('hidden');
+                    // 區間模式：隱藏顯示、小時、載入 (保留指標)
+                    aggregateItem.classList.add('hidden');
                     queryHour.classList.add('hidden');
                     loadBtn.classList.add('hidden');
+                    
+                    if (currentRangeMode === 'day' || currentRangeMode === 'month') {
+                        timeGroup.classList.add('hidden');
+                    }
                 }
             }
         }
@@ -454,7 +498,7 @@
             const labels = {
                 avg: 'AVG',
                 p95: 'P95',
-                timeout: 'Timeout',
+                timeout: 'Timeout (%)',
                 jitter: 'Jitter'
             };
             return labels[getStatMode()] || getStatMode().toUpperCase();
@@ -755,8 +799,10 @@
                     if (!res.ok) throw new Error('讀取區間失敗');
                     return res.json();
                 })
-                .then(entries => {
-                    if (!entries) entries = [];
+                .then(data => {
+                    let entries = data.entries || [];
+                    const globalStats = data.stats || {};
+                    
                     isLiveMode = false;
                     currentRangeMode = mode;
                     clearInterval(liveInterval);
@@ -795,39 +841,17 @@
                         charts[id].options.scales.x.display = true;
                         charts[id].options.scales.x.grid = { color: '#1e293b' };
 
-                        if (entries.length === 0) {
+                        const st = globalStats[id];
+                        if (entries.length === 0 || !st) {
                             document.getElementById('stats-' + id).innerHTML = '<div class="stats-row" style="color:#94a3b8; text-align:center;">此區間無數據</div>';
                         } else {
-                            const rtts = entries.map(e => e.metrics[id] === undefined ? -1 : e.metrics[id]);
-                            const validRtts = rtts.filter(v => v !== -1 && v !== null);
-
-                            const minVal = validRtts.length > 0 ? Math.min(...validRtts) : 0;
-                            const maxVal = validRtts.length > 0 ? Math.max(...validRtts) : 0;
-                            const sum = validRtts.reduce((a, b) => a + b, 0);
-                            const avgVal = validRtts.length > 0 ? Math.round(sum / validRtts.length) : 0;
-                            const toVal = rtts.filter(v => v === -1 || v === null).length;
-
-                            let sumJtr = 0;
-                            let jtrCount = 0;
-                            for (let i = 1; i < rtts.length; i++) {
-                                if (rtts[i] !== -1 && rtts[i] !== null && rtts[i - 1] !== -1 && rtts[i - 1] !== null) {
-                                    sumJtr += Math.abs(rtts[i] - rtts[i - 1]);
-                                    jtrCount++;
-                                }
-                            }
-                            const jtrVal = jtrCount > 0 ? Math.round(sumJtr / jtrCount) : 0;
-
-                            const sorted = [...validRtts].sort((a, b) => a - b);
-                            const p95Idx = Math.floor(sorted.length * 0.95);
-                            const p95Val = sorted.length > 0 ? sorted[p95Idx >= sorted.length ? sorted.length - 1 : p95Idx] : 0;
-
                             document.getElementById('stats-' + id).innerHTML =
-                                '<div class="stats-row">min:<span>' + minVal + 'ms</span> ' +
-                                'max:<span>' + maxVal + 'ms</span> ' +
-                                'avg:<span>' + avgVal + 'ms</span></div>' +
-                                '<div class="stats-row">jtr:<span>' + jtrVal + 'ms</span> ' +
-                                'p95:<span>' + p95Val + 'ms</span> ' +
-                                't/o:<em>' + toVal + '</em></div>';
+                                '<div class="stats-row">min:<span>' + st.min + 'ms</span> ' +
+                                'max:<span>' + st.max + 'ms</span> ' +
+                                'avg:<span>' + st.avg + 'ms</span></div>' +
+                                '<div class="stats-row">jtr:<span>' + st.jtr + 'ms</span> ' +
+                                'p95:<span>' + st.p95 + 'ms</span> ' +
+                                't/o:<em>' + st.to + '</em></div>';
                         }
 
                         charts[id].update();
@@ -1139,6 +1163,15 @@
                 .then(data => {
                     const isPortChanged = (port !== {{ .Port }});
                     localStorage.setItem('settings_saved_toast', isPortChanged ? 'port_changed' : 'success');
+                    
+                    // 儲存當前的觀看狀態，以便重整後還原
+                    localStorage.setItem('saved_state_isLive', isLiveMode);
+                    localStorage.setItem('saved_state_rangeMode', currentRangeMode);
+                    localStorage.setItem('saved_state_queryDate', document.getElementById('query-date').value);
+                    localStorage.setItem('saved_state_queryHour', document.getElementById('query-hour').value);
+                    localStorage.setItem('saved_state_metric', document.getElementById('metric-select').value);
+                    localStorage.setItem('saved_state_agg', document.getElementById('aggregate-mode').value);
+
                     closeSettingsModal();
                     window.location.reload();
                 })

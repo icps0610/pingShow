@@ -56,9 +56,28 @@ func HandleHistory(c *gin.Context) {
 	c.JSON(http.StatusOK, entries)
 }
 
+type GlobalStat struct {
+	Min int64 `json:"min"`
+	Max int64 `json:"max"`
+	Avg int64 `json:"avg"`
+	Jtr int64 `json:"jtr"`
+	P95 int64 `json:"p95"`
+	To  int64 `json:"to"`
+}
+
+func mergeValues(dest, src map[string]*metricSample, keys []string) {
+	if src == nil {
+		return
+	}
+	for _, id := range keys {
+		dest[id].Raw = append(dest[id].Raw, src[id].Raw...)
+		dest[id].Valid = append(dest[id].Valid, src[id].Valid...)
+	}
+}
+
 func HandleRangeHistory(c *gin.Context) {
 	endDateStr := c.Query("end_date") // YYYYMMDD
-	mode := c.Query("mode")           // "hour", "day_hour", "day" or "month"
+	mode := c.Query("mode")           // "day_hour", "day" or "month"
 	stat := c.DefaultQuery("stat", "avg")
 
 	if endDateStr == "" || mode == "" {
@@ -73,57 +92,148 @@ func HandleRangeHistory(c *gin.Context) {
 	}
 
 	var results []models.LogEntry
+	keys := currentTargetIDs()
+	globalValues := initMetricValues(keys)
 
 	if mode == "day_hour" {
 		for h := 0; h < 24; h++ {
 			targetTime := time.Date(endDate.Year(), endDate.Month(), endDate.Day(), h, 0, 0, 0, models.SystemLocation)
-			avgMetrics := calculateHourStat(targetTime, stat)
-			if avgMetrics != nil {
-				results = append(results, models.LogEntry{
-					Timestamp: targetTime.Format("15點"),
-					Metrics:   avgMetrics,
-				})
+			
+			// 預設空的 metrics，皆填入 -1 代表無資料
+			avgMetrics := make(map[string]int64)
+			for _, id := range keys {
+				avgMetrics[id] = -1
 			}
+
+			hourVals := getHourValues(targetTime, keys)
+			if hourVals != nil {
+				mergeValues(globalValues, hourVals, keys)
+				if m := calculateMetricStat(hourVals, keys, stat); m != nil {
+					avgMetrics = m
+				}
+			}
+
+			// 不管有沒有資料，都推入結果，確保 X 軸完整 00~23
+			results = append(results, models.LogEntry{
+				Timestamp: targetTime.Format("15點"),
+				Metrics:   avgMetrics,
+			})
 		}
 	} else if mode == "day" {
-		// 依照設定檔的 DayRange，每天一個點
 		for i := models.SystemDayRange - 1; i >= 0; i-- {
 			targetDate := endDate.AddDate(0, 0, -i)
-			avgMetrics := calculateDayStat(targetDate, stat)
-			if avgMetrics != nil {
-				results = append(results, models.LogEntry{
-					Timestamp: targetDate.Format("01/02"),
-					Metrics:   avgMetrics,
-				})
+			dayVals := getRangeValues(targetDate, targetDate, keys)
+			if dayVals != nil {
+				mergeValues(globalValues, dayVals, keys)
+				avgMetrics := calculateMetricStat(dayVals, keys, stat)
+				if avgMetrics != nil {
+					results = append(results, models.LogEntry{
+						Timestamp: targetDate.Format("01/02"),
+						Metrics:   avgMetrics,
+					})
+				}
 			}
 		}
 	} else if mode == "month" {
-		// 依照設定檔的 MonthRange，每月一個點
 		for i := models.SystemMonthRange - 1; i >= 0; i-- {
-			// 抓取該月的第一天到最後一天
 			targetMonth := endDate.AddDate(0, -i, 0)
 			monthStart := time.Date(targetMonth.Year(), targetMonth.Month(), 1, 0, 0, 0, 0, targetMonth.Location())
 			monthEnd := monthStart.AddDate(0, 1, -1)
-
-			// 如果是當月，算到選擇的 endDate 為止
 			if i == 0 {
 				monthEnd = endDate
 			}
 
-			avgMetrics := calculateRangeStat(monthStart, monthEnd, stat)
-			if avgMetrics != nil {
-				results = append(results, models.LogEntry{
-					Timestamp: targetMonth.Format("2006/01"),
-					Metrics:   avgMetrics,
-				})
+			monthVals := getRangeValues(monthStart, monthEnd, keys)
+			if monthVals != nil {
+				mergeValues(globalValues, monthVals, keys)
+				avgMetrics := calculateMetricStat(monthVals, keys, stat)
+				if avgMetrics != nil {
+					results = append(results, models.LogEntry{
+						Timestamp: targetMonth.Format("2006/01"),
+						Metrics:   avgMetrics,
+					})
+				}
 			}
 		}
 	}
 
-	c.JSON(http.StatusOK, results)
+	stats := make(map[string]*GlobalStat)
+	for _, id := range keys {
+		sample := globalValues[id]
+		if len(sample.Raw) == 0 {
+			stats[id] = &GlobalStat{}
+			continue
+		}
+
+		minVal, maxVal, avgVal := int64(0), int64(0), int64(0)
+		if len(sample.Valid) > 0 {
+			minVal = sample.Valid[0]
+			maxVal = sample.Valid[0]
+			var sum int64
+			for _, v := range sample.Valid {
+				if v < minVal {
+					minVal = v
+				}
+				if v > maxVal {
+					maxVal = v
+				}
+				sum += v
+			}
+			avgVal = sum / int64(len(sample.Valid))
+		}
+
+		toCount := int64(0)
+		for _, v := range sample.Raw {
+			if v == -1 {
+				toCount++
+			}
+		}
+
+		jtrCount := int64(0)
+		sumJtr := int64(0)
+		var lastValid int64 = -1
+		for _, v := range sample.Raw {
+			if v != -1 {
+				if lastValid != -1 {
+					diff := v - lastValid
+					if diff < 0 {
+						diff = -diff
+					}
+					sumJtr += diff
+					jtrCount++
+				}
+				lastValid = v
+			} else {
+				lastValid = -1
+			}
+		}
+		jtrVal := int64(0)
+		if jtrCount > 0 {
+			jtrVal = sumJtr / jtrCount
+		}
+
+		p95Val := int64(0)
+		if len(sample.Valid) > 0 {
+			p95Val = percentile(sample.Valid, 0.95)
+		}
+
+		stats[id] = &GlobalStat{
+			Min: minVal,
+			Max: maxVal,
+			Avg: avgVal,
+			Jtr: jtrVal,
+			P95: p95Val,
+			To:  toCount,
+		}
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"entries": results,
+		"stats":   stats,
+	})
 }
 
-func calculateHourStat(t time.Time, stat string) map[string]int64 {
+func getHourValues(t time.Time, keys []string) map[string]*metricSample {
 	dateStr := t.Format("20060102")
 	hourStr := t.Format("15")
 	fileName := fmt.Sprintf("log_%s_%s.json", dateStr, hourStr)
@@ -135,9 +245,7 @@ func calculateHourStat(t time.Time, stat string) map[string]int64 {
 	}
 	defer file.Close()
 
-	keys := currentTargetIDs()
 	values := initMetricValues(keys)
-
 	scanner := bufio.NewScanner(file)
 	for scanner.Scan() {
 		var entry models.LogEntry
@@ -145,18 +253,12 @@ func calculateHourStat(t time.Time, stat string) map[string]int64 {
 			appendEntryMetrics(values, keys, entry)
 		}
 	}
-
-	return calculateMetricStat(values, keys, stat)
+	return values
 }
 
-func calculateDayStat(date time.Time, stat string) map[string]int64 {
-	return calculateRangeStat(date, date, stat)
-}
-
-func calculateRangeStat(start, end time.Time, stat string) map[string]int64 {
-	keys := currentTargetIDs()
+func getRangeValues(start, end time.Time, keys []string) map[string]*metricSample {
 	values := initMetricValues(keys)
-
+	found := false
 	for d := start; !d.After(end); d = d.AddDate(0, 0, 1) {
 		dateStr := d.Format("20060102")
 		for h := 0; h < 24; h++ {
@@ -173,12 +275,37 @@ func calculateRangeStat(start, end time.Time, stat string) map[string]int64 {
 				var entry models.LogEntry
 				if err := json.Unmarshal(scanner.Bytes(), &entry); err == nil {
 					appendEntryMetrics(values, keys, entry)
+					found = true
 				}
 			}
 			file.Close()
 		}
 	}
+	if !found {
+		return nil
+	}
+	return values
+}
 
+func calculateHourStat(t time.Time, stat string) map[string]int64 {
+	keys := currentTargetIDs()
+	values := getHourValues(t, keys)
+	if values == nil {
+		return nil
+	}
+	return calculateMetricStat(values, keys, stat)
+}
+
+func calculateDayStat(date time.Time, stat string) map[string]int64 {
+	return calculateRangeStat(date, date, stat)
+}
+
+func calculateRangeStat(start, end time.Time, stat string) map[string]int64 {
+	keys := currentTargetIDs()
+	values := getRangeValues(start, end, keys)
+	if values == nil {
+		return nil
+	}
 	return calculateMetricStat(values, keys, stat)
 }
 
