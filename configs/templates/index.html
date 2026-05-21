@@ -798,7 +798,36 @@
                         if (entries.length === 0) {
                             document.getElementById('stats-' + id).innerHTML = '<div class="stats-row" style="color:#94a3b8; text-align:center;">此區間無數據</div>';
                         } else {
-                            document.getElementById('stats-' + id).innerHTML = '';
+                            const rtts = entries.map(e => e.metrics[id] === undefined ? -1 : e.metrics[id]);
+                            const validRtts = rtts.filter(v => v !== -1 && v !== null);
+
+                            const minVal = validRtts.length > 0 ? Math.min(...validRtts) : 0;
+                            const maxVal = validRtts.length > 0 ? Math.max(...validRtts) : 0;
+                            const sum = validRtts.reduce((a, b) => a + b, 0);
+                            const avgVal = validRtts.length > 0 ? Math.round(sum / validRtts.length) : 0;
+                            const toVal = rtts.filter(v => v === -1 || v === null).length;
+
+                            let sumJtr = 0;
+                            let jtrCount = 0;
+                            for (let i = 1; i < rtts.length; i++) {
+                                if (rtts[i] !== -1 && rtts[i] !== null && rtts[i - 1] !== -1 && rtts[i - 1] !== null) {
+                                    sumJtr += Math.abs(rtts[i] - rtts[i - 1]);
+                                    jtrCount++;
+                                }
+                            }
+                            const jtrVal = jtrCount > 0 ? Math.round(sumJtr / jtrCount) : 0;
+
+                            const sorted = [...validRtts].sort((a, b) => a - b);
+                            const p95Idx = Math.floor(sorted.length * 0.95);
+                            const p95Val = sorted.length > 0 ? sorted[p95Idx >= sorted.length ? sorted.length - 1 : p95Idx] : 0;
+
+                            document.getElementById('stats-' + id).innerHTML =
+                                '<div class="stats-row">min:<span>' + minVal + 'ms</span> ' +
+                                'max:<span>' + maxVal + 'ms</span> ' +
+                                'avg:<span>' + avgVal + 'ms</span></div>' +
+                                '<div class="stats-row">jtr:<span>' + jtrVal + 'ms</span> ' +
+                                'p95:<span>' + p95Val + 'ms</span> ' +
+                                't/o:<em>' + toVal + '</em></div>';
                         }
 
                         charts[id].update();
