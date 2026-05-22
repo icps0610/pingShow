@@ -73,14 +73,16 @@ func LoadTargets() error {
 	// 如果檔案不存在，則建立包含預設 port 與 targets 的設定檔
 	if _, err := os.Stat(filename); os.IsNotExist(err) {
 		defaultConfig := struct {
-			Port       int `json:"port"`
-			Interval   int `json:"interval"`
-			YMax       int `json:"ymax"`
-			DayRange   int `json:"day_range"`
-			MonthRange int `json:"month_range"`
+			Port       int    `json:"port"`
+			Interval   int    `json:"interval"`
+			YMax       int    `json:"ymax"`
+			DayRange   int    `json:"day_range"`
+			MonthRange int    `json:"month_range"`
+			Timezone   string `json:"timezone"`
 			Targets    []struct {
-				Name string `json:"name"`
-				IP   string `json:"ip"`
+				Name     string `json:"name"`
+				IP       string `json:"ip"`
+				Disabled bool   `json:"disabled,omitempty"`
 			} `json:"targets"`
 		}{
 			Port:       80,
@@ -88,9 +90,11 @@ func LoadTargets() error {
 			YMax:       50,
 			DayRange:   7,
 			MonthRange: 3,
+			Timezone:   "",
 			Targets: []struct {
-				Name string `json:"name"`
-				IP   string `json:"ip"`
+				Name     string `json:"name"`
+				IP       string `json:"ip"`
+				Disabled bool   `json:"disabled,omitempty"`
 			}{
 				{Name: "local", IP: "192.168.0.1"},
 				{Name: "Taiwan", IP: "168.95.1.1"},
